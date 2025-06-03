@@ -5,20 +5,20 @@
  *
  * Usage :
  *   # generate/update all .hash files
- *   workspace-hash --generate
+ *   monorepo-hash --generate
  *
  *   # compare current vs existing .hash for ALL workspaces
- *   workspace-hash --compare
+ *   monorepo-hash --compare
  *
  *   # generate only for services/backend-admin
- *   workspace-hash -g --target="services/backend-admin"
+ *   monorepo-hash -g --target="services/backend-admin"
  *
  *   # compare only for services/backend-admin and packages/node
- *   workspace-hash -c -t="services/backend-admin,packages/node"
+ *   monorepo-hash -c -t="services/backend-admin,packages/node"
  *
  *   # enable debug mode (per-file hashes)
- *   workspace-hash -g --debug
- *   workspace-hash -c -d
+ *   monorepo-hash -g --debug
+ *   monorepo-hash -c -d
  */
 
 import type { PathLike } from "node:fs"
@@ -272,7 +272,7 @@ if (!mode) {
   if (mode === "generate") {
     if (targets) {
       log(
-        ℹ️  Generating hashes for specified targets... (${targets.join(
+       ℹ️  Generating hashes for specified targets... (${targets.join(
           ", "
         )})\n`
       )

@@ -1,10 +1,10 @@
 {
-  "name": "@edm115/workspace-hash",
+  "name": "monorepo-hash",
   "version": "0.1.0",
   "description": "",
   "type": "module",
   "bin": {
-    "workspace-hash": "src/hash.ts"
+    "monorepo-hash": "src/hash.ts"
   },
   "dependencies": {
     "fast-glob": "~3.3.3",
