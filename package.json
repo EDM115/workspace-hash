@@ -1,0 +1,20 @@
+{
+  "name": "workspace-hash",
+  "version": "0.1.0",
+  "description": "",
+  "type": "module",
+  "bin": {
+    "workspace-hash": "src/hash.ts"
+  },
+  "dependencies": {
+    "fast-glob": "~3.3.3",
+    "find-up": "~7.0.0",
+    "ignore": "~7.0.5",
+    "js-yaml": "~4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/js-yaml": "~4.0.9",
+    "typescript": "~5.8.3"
+  }
+}

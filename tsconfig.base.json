@@ -1,0 +1,21 @@
+{
+  "display": "Node 22",
+  "_version": "22.16.0",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "noErrorTruncation": true,
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "inlineSources": true,
+    "moduleResolution": "nodenext",
+    "lib": ["es2023"],
+    "target": "ESNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "incremental": true
+  }
+}
