@@ -272,7 +272,7 @@ if (!mode) {
   if (mode === "generate") {
     if (targets) {
       log(
-       ℹ️  Generating hashes for specified targets... (${targets.join(
+        `ℹ️  Generating hashes for specified targets... (${targets.join(
           ", "
         )})\n`
       )
