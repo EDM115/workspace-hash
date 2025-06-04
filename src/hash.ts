@@ -94,9 +94,20 @@ Arguments :
   }
 }
 
-function log(message: string) {
+function log(message: string, overwrite = false) {
   if (!silent) {
-    console.log(message)
+    if (
+      overwrite &&
+      process.stdout.isTTY &&
+      typeof process.stdout.clearLine === "function" &&
+      typeof process.stdout.cursorTo === "function"
+    ) {
+      process.stdout.clearLine(0)
+      process.stdout.cursorTo(0)
+      process.stdout.write(message)
+    } else {
+      console.log(message)
+    }
   }
 }
 
@@ -348,15 +359,12 @@ async function hash() {
   // 3) compute per-file hashes and ownHash buffers
   for (const pkgJson of pkgJsonPaths) {
     count++
-    if (!silent) {
-      process.stdout.clearLine(0)
-      process.stdout.cursorTo(0)
-      process.stdout.write(
-        `\r🔄 Computing hashes (${zeroPad(count, 2)}/${total}) • ${
-          pkgJson.split("/package.json")[0]
-        }`
-      )
-    }
+    log(
+      `\r🔄 Computing hashes (${zeroPad(count, 2)}/${total}) • ${
+        pkgJson.split("/package.json")[0]
+      }`,
+      true,
+    )
 
     const absJson = path.resolve(repoRoot, pkgJson)
     const dir = path.dirname(absJson)
@@ -389,12 +397,7 @@ async function hash() {
     }
   }
 
-  if (!silent) {
-    process.stdout.clearLine(0)
-    process.stdout.cursorTo(0)
-    process.stdout.write(`\r✅ Computed all hashes (${total})`)
-  }
-
+  log(`\r✅ Computed all hashes (${total})`, true)
   log("\n")
 
   // 3) resolve internal deps for all pkgs (even those not in targets, since they might be needed for recursive hashing)
@@ -622,8 +625,11 @@ async function hash() {
       )
       log("")
     }
-    
-    if (mode === "compare" && (changedTargets.length > 0 || missingTargets.length > 0)) {
+
+    if (
+      mode === "compare" &&
+      (changedTargets.length > 0 || missingTargets.length > 0)
+    ) {
       process.exit(1)
     }
   }
