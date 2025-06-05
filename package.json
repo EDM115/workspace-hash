@@ -1,11 +1,13 @@
 {
-  "name": "monorepo-hash",
-  "version": "0.3.0",
-  "description": "",
-  "type": "module",
+  "author": "EDM115 <npmjs@edm115.dev> (https://edm115.dev)",
   "bin": {
-    "monorepo-hash": "src/hash.ts"
+    "monorepo-hash": "./dist/hash.js"
   },
+  "bugs": {
+    "email": "npmjs@edm115.dev",
+    "url": "https://github.com/EDM115/monorepo-hash/issues"
+  },
+  "description": "A CLI tool to generate hashes for the workspaces of your monorepo",
   "dependencies": {
     "fast-glob": "~3.3.3",
     "find-up": "~7.0.0",
@@ -13,8 +15,96 @@
     "js-yaml": "~4.1.0"
   },
   "devDependencies": {
-    "@types/node": "latest",
+    "@eslint/js": "~9.28.0",
+    "@stylistic/eslint-plugin": "~4.4.1",
     "@types/js-yaml": "~4.0.9",
-    "typescript": "~5.8.3"
-  }
+    "@types/node": "latest",
+    "@typescript-eslint/parser": "~8.33.1",
+    "eslint": "~9.28.0",
+    "eslint-import-resolver-typescript": "~4.4.2",
+    "eslint-plugin-import-x": "~4.15.1",
+    "eslint-plugin-oxlint": "~0.17.0",
+    "globals": "~16.2.0",
+    "jiti": "~2.4.2",
+    "npm-run-all2": "~8.0.4",
+    "oxlint": "~0.17.0",
+    "tsdown": "~0.12.7",
+    "tsx": "~4.19.4",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "~8.33.1",
+    "unplugin-unused": "~0.5.0",
+    "vitest": "~3.2.2"
+  },
+  "exports": {
+    "./monorepo-hash": {
+      "import": "./dist/monorepo-hash.js",
+      "require": "./dist/monorepo-hash.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "funding": [
+    {
+      "type": "paypal",
+      "url": "https://www.paypal.me/8EDM115"
+    },
+    {
+      "type": "buymeacoffee",
+      "url": "https://www.buymeacoffee.com/edm115"
+    },
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/EDM115"
+    },
+    {
+      "type": "telegram",
+      "url": "https://t.me/EDM115bots/698"
+    }
+  ],
+  "homepage": "https://github.com/EDM115/monorepo-hash",
+  "keywords": [
+    "monorepo",
+    "hash",
+    "pnpm"
+  ],
+  "license": "MIT",
+  "main": "./dist/monorepo-hash.js",
+  "module": "./dist/monorepo-hash.js",
+  "name": "monorepo-hash",
+  "packageManager": "pnpm@10.11.1",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EDM115/monorepo-hash.git"
+  },
+  "scripts": {
+    "build": "tsdown",
+
+    "lint": "run-s lint:oxlint lint:eslint",
+    "lint:fix": "run-s lint:fix:oxlint lint:fix:eslint",
+
+    "lint:eslint": "eslint . --cache --cache-location .eslintcache",
+    "lint:fix:eslint": "eslint . --fix",
+
+    "lint:oxlint": "oxlint . --ignore-path .gitignore",
+    "lint:fix:oxlint": "oxlint . --fix --ignore-path .gitignore",
+
+    "lint:no-cache:eslint": "eslint .",
+
+    "format": "eslint -c eslint.stylistic.config.ts --fix .",
+
+    "prepublishOnly": "pnpm build",
+    "release": "pnpm publish",
+
+    "test": "vitest",
+
+    "typecheck": "tsc --noEmit"
+  },
+  "type": "module",
+  "types": "./dist/monorepo-hash.d.ts",
+  "version": "0.4.0"
 }

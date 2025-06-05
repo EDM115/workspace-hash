@@ -66,7 +66,8 @@ for (const arg of argv) {
 
     mode = "compare"
   } else if (arg.startsWith("--target=") || arg.startsWith("-t=")) {
-    const [, val] = arg.split("=")
+    const [ , val ] = arg.split("=")
+
     targets = val.split(",").map((p) => p.replace(/\/+$/, ""))
   } else if (arg === "--silent" || arg === "-s") {
     silent = true
@@ -97,10 +98,10 @@ Arguments :
 function log(message: string, overwrite = false) {
   if (!silent) {
     if (
-      overwrite &&
-      process.stdout.isTTY &&
-      typeof process.stdout.clearLine === "function" &&
-      typeof process.stdout.cursorTo === "function"
+      overwrite
+      && process.stdout.isTTY
+      && typeof process.stdout.clearLine === "function"
+      && typeof process.stdout.cursorTo === "function"
     ) {
       process.stdout.clearLine(0)
       process.stdout.cursorTo(0)
@@ -131,7 +132,7 @@ function zeroPad(num: number, places: number) {
 async function getWorkspaceFileList(
   dir: string,
   relDir: string,
-  rootIgnore: ignore.Ignore
+  rootIgnore: ignore.Ignore,
 ): Promise<string[]> {
   // Gather all files under `dir`
   const rawFiles = await fg("**/*", { cwd: dir, onlyFiles: true, dot: true })
@@ -146,8 +147,10 @@ async function getWorkspaceFileList(
   // 2) Apply package‐level .gitignore if present
   const pkgIgnore = ignore()
   const pkgGit = path.join(dir, ".gitignore")
+
   if (await exists(pkgGit)) {
     const pkgContents = await fs.readFile(pkgGit, "utf8")
+
     pkgIgnore.add(pkgContents)
   }
   // Always ignore .hash and .debug-hash
@@ -155,9 +158,7 @@ async function getWorkspaceFileList(
   pkgIgnore.add(".debug-hash")
 
   // Convert back to package‐relative POSIX paths
-  const pkgRelativePOSIX = rootFiltered.map((rp) =>
-    path.posix.relative(relDir, rp)
-  )
+  const pkgRelativePOSIX = rootFiltered.map((rp) => path.posix.relative(relDir, rp))
   const pkgFilteredPOSIX = pkgIgnore.filter(pkgRelativePOSIX)
 
   // Convert to OS‐specific separators and sort
@@ -170,7 +171,7 @@ async function getWorkspaceFileList(
  */
 async function computePerFileHashes(
   dir: string,
-  fileList: string[]
+  fileList: string[],
 ): Promise<Record<string, string>> {
   const map: Record<string, string> = {}
 
@@ -183,6 +184,7 @@ async function computePerFileHashes(
       .update(normalized)
       .update(content)
       .digest("hex")
+
     map[normalized] = fileHash
   }
 
@@ -194,13 +196,14 @@ async function computePerFileHashes(
  */
 function computeOwnHashFromPerFile(
   perFileMap: Record<string, string>,
-  sortedKeys: string[]
+  sortedKeys: string[],
 ): Buffer {
   const h = crypto.createHash("sha256")
 
   for (const key of sortedKeys) {
     // Each entry in perFileMap[key] is a hex string, convert to Buffer
     const raw = Buffer.from(perFileMap[key], "hex")
+
     h.update(raw)
   }
 
@@ -213,7 +216,7 @@ function computeOwnHashFromPerFile(
 function computeFinalHash(
   pkgName: string,
   pkgs: Record<string, PackageInfo>,
-  cache: Record<string, string>
+  cache: Record<string, string>,
 ): string {
   if (cache[pkgName]) {
     return cache[pkgName]
@@ -232,10 +235,12 @@ function computeFinalHash(
   for (const dep of pkg.deps) {
     const depHex = computeFinalHash(dep, pkgs, cache)
     const depBuf = Buffer.from(depHex, "hex")
+
     chain = chain.update(depBuf)
   }
 
   const finalHex = chain.digest("hex")
+
   cache[pkgName] = finalHex
 
   return finalHex
@@ -246,9 +251,10 @@ function computeFinalHash(
  */
 async function writeDebugFile(
   dir: string,
-  debugMap: Record<string, string>
+  debugMap: Record<string, string>,
 ): Promise<void> {
   const debugPath = path.join(dir, ".debug-hash")
+
   await fs.writeFile(debugPath, JSON.stringify(debugMap, null, 2), "utf8")
 }
 
@@ -256,9 +262,7 @@ async function writeDebugFile(
  * Load the existing `.debug-hash` JSON from `dir`, if present.
  * Otherwise returns null.
  */
-async function loadDebugFile(
-  dir: string
-): Promise<Record<string, string> | null> {
+async function loadDebugFile(dir: string): Promise<Record<string, string> | null> {
   const debugPath = path.join(dir, ".debug-hash")
 
   if (!(await exists(debugPath))) {
@@ -282,21 +286,13 @@ if (!mode) {
 } else {
   if (mode === "generate") {
     if (targets) {
-      log(
-        `ℹ️  Generating hashes for specified targets... (${targets.join(
-          ", "
-        )})\n`
-      )
+      log(`ℹ️  Generating hashes for specified targets... (${targets.join(", ")})\n`)
     } else {
       log("ℹ️  Generating hashes for all workspaces...\n")
     }
   } else {
     if (targets) {
-      log(
-        `ℹ️  Comparing hashes for specified targets... (${targets.join(
-          ", "
-        )})\n`
-      )
+      log(`ℹ️  Comparing hashes for specified targets... (${targets.join(", ")})\n`)
     } else if (targets === null) {
       log("ℹ️  Comparing hashes for all workspaces...\n")
     }
@@ -318,15 +314,13 @@ if (!wsYaml || !(await exists(wsYaml))) {
 
 const repoRoot = path.dirname(wsYaml)
 
-const wsConfig = yaml.load(
-  await fs.readFile(wsYaml, "utf8")
-) as PnpmWorkspaceConfig
+const wsConfig = yaml.load(await fs.readFile(wsYaml, "utf8")) as PnpmWorkspaceConfig
 const workspaceGlobs: string[] = Array.isArray(wsConfig.packages)
   ? wsConfig.packages
   : []
 
 if (workspaceGlobs.length === 0) {
-  console.error('❌ No "packages:" entries in pnpm-workspace.yaml')
+  console.error("❌ No \"packages:\" entries in pnpm-workspace.yaml")
 
   process.exit(1)
 }
@@ -337,6 +331,7 @@ const rootGit = path.join(repoRoot, ".gitignore")
 
 if (await exists(rootGit)) {
   const rootGitContents = await fs.readFile(rootGit, "utf8")
+
   rootIgnore = ignore().add(rootGitContents)
   // Ignore hashes
   rootIgnore.add("**/.hash")
@@ -347,7 +342,7 @@ async function hash() {
   // 1) find every workspace's package.json
   const pkgJsonPaths = await fg(
     workspaceGlobs.map((glob) => path.posix.join(glob, "package.json")),
-    { onlyFiles: true, dot: true }
+    { onlyFiles: true, dot: true },
   )
 
   // 2) build PackageInfo objects
@@ -402,14 +397,13 @@ async function hash() {
 
   // 3) resolve internal deps for all pkgs (even those not in targets, since they might be needed for recursive hashing)
   for (const { dir } of Object.values(pkgs)) {
-    const manifest = JSON.parse(
-      await fs.readFile(path.join(dir, "package.json"), "utf8")
-    )
+    const manifest = JSON.parse(await fs.readFile(path.join(dir, "package.json"), "utf8"))
     const allDeps = {
       ...manifest.dependencies,
       ...manifest.devDependencies,
       ...manifest.peerDependencies,
     }
+
     pkgs[manifest.name].deps = Object.keys(allDeps)
       .filter((d) => pkgs[d])
       .sort()
@@ -424,7 +418,7 @@ async function hash() {
 
   // 5) perform generate or compare
   if (mode === "generate") {
-    for (const [name, { dir, relDir }] of Object.entries(pkgs)) {
+    for (const [ name, { dir, relDir }] of Object.entries(pkgs)) {
       // If the user passed --target, only write those relDirs
       if (targets && !targets.includes(relDir)) {
         continue
@@ -442,7 +436,7 @@ async function hash() {
     const allChanged: string[] = []
     const allMissing: string[] = []
 
-    for (const [pkgName, info] of Object.entries(pkgs)) {
+    for (const [ pkgName, info ] of Object.entries(pkgs)) {
       const currentHex = finalCache[pkgName]
       const hashPath = path.join(info.dir, ".hash")
 
@@ -459,7 +453,8 @@ async function hash() {
 
     // 2) build a quick adjacency map from packageName to its internal deps
     const adjacency: Record<string, string[]> = {}
-    for (const [name, info] of Object.entries(pkgs)) {
+
+    for (const [ name, info ] of Object.entries(pkgs)) {
       // deps only includes other workspaces
       adjacency[name] = info.deps.slice()
     }
@@ -473,7 +468,7 @@ async function hash() {
       }
 
       const visited = new Set<string>()
-      const stack = [...adjacency[pkgName]]
+      const stack = [ ...adjacency[pkgName] ]
 
       while (stack.length > 0) {
         const dep = stack.pop()!
@@ -511,7 +506,7 @@ async function hash() {
     // We need a map pkgName to oldHash so we can report old when it changed
     const oldHashMap: Record<string, string> = {}
 
-    for (const [pkgName, info] of Object.entries(pkgs)) {
+    for (const [ pkgName, info ] of Object.entries(pkgs)) {
       const hashPath = path.join(info.dir, ".hash")
 
       if (await exists(hashPath)) {
@@ -521,10 +516,10 @@ async function hash() {
 
     // 5) finally, iterate only over the workspaces the user asked for
     const toCheck = targets
-      ? Object.entries(pkgs).filter(([, info]) => targets.includes(info.relDir))
+      ? Object.entries(pkgs).filter(([ , info ]) => targets.includes(info.relDir))
       : Object.entries(pkgs)
 
-    for (const [pkgName, info] of toCheck) {
+    for (const [ pkgName, info ] of toCheck) {
       const newHash = finalCache[pkgName]
       const hashPath = path.join(info.dir, ".hash")
 
@@ -537,9 +532,8 @@ async function hash() {
 
       if (oldHash !== newHash) {
         const transDeps = getTransitiveDeps(pkgName)
-        const depsChanged = Array.from(transDeps).filter((d) =>
-          allChanged.includes(d)
-        )
+        const depsChanged = Array.from(transDeps).filter((d) => allChanged.includes(d))
+
         changedTargets.push({
           name: info.relDir,
           oldHash,
@@ -548,9 +542,7 @@ async function hash() {
         })
       } else {
         const transDeps = getTransitiveDeps(pkgName)
-        const depsChanged = Array.from(transDeps).filter((d) =>
-          allChanged.includes(d)
-        )
+        const depsChanged = Array.from(transDeps).filter((d) => allChanged.includes(d))
 
         if (depsChanged.length > 0) {
           changedTargets.push({
@@ -567,6 +559,7 @@ async function hash() {
       // If debug AND there's an existing .debug-hash, compare per-file maps
       if (debug) {
         const oldDebug = await loadDebugFile(info.dir)
+
         if (oldDebug) {
           // We already have info.perFileHashes from the generate pass
           const newDebug = info.perFileHashes!
@@ -610,7 +603,7 @@ async function hash() {
         log(`\tnew : ${newHash}`)
 
         if (changedDeps.length > 0) {
-          log(`\t🚧 changed dependency(s) :`)
+          log("\t🚧 changed dependency(s) :")
           changedDeps.forEach((d) => log(`\t\t• ${d}`))
         }
       }
@@ -620,15 +613,13 @@ async function hash() {
 
     if (missingTargets.length > 0) {
       log(`❓ Missing .hash files (${missingTargets.length}) :`)
-      missingTargets.forEach(({ name, newHash }) =>
-        log(`• ${name} (would be ${newHash})`)
-      )
+      missingTargets.forEach(({ name, newHash }) => log(`• ${name} (would be ${newHash})`))
       log("")
     }
 
     if (
-      mode === "compare" &&
-      (changedTargets.length > 0 || missingTargets.length > 0)
+      mode === "compare"
+      && (changedTargets.length > 0 || missingTargets.length > 0)
     ) {
       process.exit(1)
     }
