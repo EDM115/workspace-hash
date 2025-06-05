@@ -56,6 +56,7 @@ export default [
       ],
       "@typescript-eslint/no-explicit-any": "warn",
       "capitalized-comments": "off",
+      "complexity": [ "warn", { max: 30 }],
       "curly": [ "warn", "all" ],
       "id-length": "off",
       "import-x/no-unresolved": [ "error" ],

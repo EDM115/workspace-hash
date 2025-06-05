@@ -8,6 +8,12 @@ export default defineConfig({
   exports: true,
   format: [ "esm" ],
   minify: true,
+  noExternal: [
+    "fast-glob",
+    "find-up",
+    "ignore",
+    "js-yaml",
+  ],
   platform: "node",
   shims: true,
   target: [ "esnext", "node20" ],
