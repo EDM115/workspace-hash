@@ -6,7 +6,7 @@ export default defineConfig({
     "monorepo-hash": "./src/monorepo-hash.ts",
   },
   exports: true,
-  format: [ "cjs", "esm" ],
+  format: [ "esm" ],
   minify: true,
   platform: "node",
   shims: true,

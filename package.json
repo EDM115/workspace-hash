@@ -36,10 +36,7 @@
     "vitest": "~3.2.2"
   },
   "exports": {
-    "./monorepo-hash": {
-      "import": "./dist/monorepo-hash.js",
-      "require": "./dist/monorepo-hash.cjs"
-    },
+    ".": "./dist/monorepo-hash.js",
     "./package.json": "./package.json"
   },
   "files": [
@@ -83,25 +80,17 @@
   },
   "scripts": {
     "build": "tsdown",
-
     "lint": "run-s lint:oxlint lint:eslint",
     "lint:fix": "run-s lint:fix:oxlint lint:fix:eslint",
-
     "lint:eslint": "eslint . --cache --cache-location .eslintcache",
     "lint:fix:eslint": "eslint . --fix",
-
     "lint:oxlint": "oxlint . --ignore-path .gitignore",
     "lint:fix:oxlint": "oxlint . --fix --ignore-path .gitignore",
-
     "lint:no-cache:eslint": "eslint .",
-
     "format": "eslint -c eslint.stylistic.config.ts --fix .",
-
     "prepublishOnly": "pnpm build",
     "release": "pnpm publish",
-
     "test": "vitest",
-
     "typecheck": "tsc --noEmit"
   },
   "type": "module",
