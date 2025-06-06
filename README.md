@@ -255,6 +255,89 @@ $ pnpm monorepo-hash --compare --target="services/backend"
 </details>
 
 ### Usage in CI
+This was the main reason I created this tool, and whether it's in GitHub Actions or locally through [act](https://github.com/nektos/act), it can help you ensure reduce drastically CI times.  
+Here's an example workflow that uses `monorepo-hash` to only build the workspaces that have changed, and then run tests on them :
+```yaml
+# The boring stuff
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash
+    env:
+      IMAGE_TAG: "demo-${{ github.sha }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm i --frozen-lockfile
+
+      - name: Restore .hash cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/.hash
+          key: hash-files-${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            hash-files-${{ runner.os }}-pnpm-
+
+      - name: Check if workspace-name is unchanged
+        id: check-workspace-name
+        run: |
+          # These 2 lines are useful only if you use act, as a way to ensure the images are built if not present
+          # WORKSPACENAME_DOCKER_EXISTS=$(docker images -q username/workspace-name:${{ env.IMAGE_TAG }} | wc -l)
+          # echo "WORKSPACENAME_DOCKER_EXISTS=$WORKSPACENAME_DOCKER_EXISTS" >> ${GITHUB_OUTPUT}
+          set +e
+          pnpm monorepo-hash --compare --target="services/workspace-name"
+          EXIT_CODE=$?
+          echo "WORKSPACENAME_HASH_EXIT_CODE=$EXIT_CODE" >> ${GITHUB_OUTPUT}
+
+      # Do this as much as needed for your workspaces
+
+      - name: Build the workspace-name Docker image
+        if: steps.check-workspace-name.outputs.WORKSPACENAME_HASH_EXIT_CODE != '0'
+        # act version :
+        # if: (steps.check-workspace-name.outputs.WORKSPACENAME_HASH_EXIT_CODE != '0' || steps.check-workspace-name.outputs.WORKSPACENAME_DOCKER_EXISTS == '0')
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/workspace-name/Dockerfile
+          tags: username/workspace-name:${{ env.IMAGE_TAG }}
+          load: true
+
+      # Build things and test them
+
+      - name: Save .hash cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/.hash
+          key: hash-files-${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            hash-files-${{ runner.os }}-pnpm-
+```
+Here we use the actions cache to store the `.hash` files, so that we can reuse them in the next runs.  
+This is especially useful because when yu generate hashes, the action will pick them up from the latest commit and not the latest run.
 
 ## :construction: Limitations
 - Only works with `PNPM` for now  
