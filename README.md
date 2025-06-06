@@ -114,22 +114,10 @@ Tested in the [small monorepo](tests/demo/small-monorepo.7z), with the following
 └── pnpm-workspace.yaml
 ```
 
-**Hash generation** :
+<details><summary><h4>Hash generation</h4></summary>
+
 ```bash
-$ pnpm monorepo-hash --generateℹ️  Generating hashes for all workspaces...
-
-✅ Computed all hashes (5)
-
-✅ services\backend (f4cc294c3165f90990c03a4285796f98555b35bcf845981710a92ce66c7166e3) written to .hash
-✅ packages\linter (c3f5ddaafb7382c35fa1b8045955c56a9a8b03754ed2cf3021acc335093d7e0d) written to .hash
-✅ packages\cli-tools (b85b9d51a1536c94094fb652e7e577e36ac154072d3de8e42f3b3eb81e669054) written to .hash
-✅ services\frontend (d5be1221077403acfd888a60ed5e11c66a1394d6ae044fe026ca199093b81f9b) written to .hash
-✅ database (adb587b8758d1a9066a1a479ce4da12765b5cf128f5538312a017af233f85adb) written to .hash
-```
-
-**Hash comparison - no changes** :
-```bash
-$ pnpm monorepo-hash --compare
+$ pnpm monorepo-hash --generate
 ℹ️  Generating hashes for all workspaces...
 
 ✅ Computed all hashes (5)
@@ -141,8 +129,30 @@ $ pnpm monorepo-hash --compare
 ✅ database (adb587b8758d1a9066a1a479ce4da12765b5cf128f5538312a017af233f85adb) written to .hash
 ```
 
-**Hash comparison - changes detected** :
+</details>
+
+<details><summary><h4>Hash comparison - no changes</h4></summary>
+
 ```bash
+$ pnpm monorepo-hash --compare
+ℹ️  Comparing hashes for all workspaces...
+
+✅ Computed all hashes (5)
+
+✅ Unchanged (5) :
+• database
+• packages\linter
+• packages\cli-tools
+• services\backend
+• services\frontend
+```
+
+</details>
+
+<details><summary><h4>Hash comparison - changes detected</h4></summary>
+
+```bash
+$ pnpm monorepo-hash --compare
 ℹ️  Comparing hashes for all workspaces...
 
 ✅ Computed all hashes (5)
@@ -175,7 +185,30 @@ $ pnpm monorepo-hash --compare
                 • packages\linter
 ```
 
-**Hash generation - specific workspaces** :
+</details>
+
+<details><summary><h4>Hash comparison - missing hashes</h4></summary>
+
+```bash
+$ pnpm monorepo-hash --compare
+ℹ️  Comparing hashes for all workspaces...
+
+✅ Computed all hashes (5)
+
+✅ Unchanged (4) :
+• packages\linter
+• packages\cli-tools
+• services\backend
+• services\frontend
+
+❓ Missing .hash files (1) :
+• database (would be f1d150816fef2890b2a0121f6267863a0f0efab59f5008f266d07a6045f60774)
+```
+
+</details>
+
+<details><summary><h4>Hash generation - specific workspaces</h4></summary>
+
 ```bash
 $ pnpm monorepo-hash --generate --target="packages/cli-tools,services/frontend"
 ℹ️  Generating hashes for specified targets... (packages\cli-tools, services\frontend)
@@ -186,7 +219,10 @@ $ pnpm monorepo-hash --generate --target="packages/cli-tools,services/frontend"
 ✅ services\frontend (36ffd97f62ab83a109f28549d3f23754e5e6d10a357f83ac76f63c6fec093efc) written to .hash
 ```
 
-**Hash comparison - specific workspaces - no changes** :
+</details>
+
+<details><summary><h4>Hash comparison - specific workspaces - no changes</h4></summary>
+
 ```bash
 $ pnpm monorepo-hash --compare --target="packages/cli-tools,services/frontend"
 ℹ️  Comparing hashes for specified targets... (packages\cli-tools, services\frontend)
@@ -198,7 +234,10 @@ $ pnpm monorepo-hash --compare --target="packages/cli-tools,services/frontend"
 • services\frontend
 ```
 
-**Hash comparison - specific workspaces - changes detected** :
+</details>
+
+<details><summary><h4>Hash comparison - specific workspaces - changes detected</h4></summary>
+
 ```bash
 $ pnpm monorepo-hash --compare --target="services/backend"
 ℹ️  Comparing hashes for specified targets... (services\backend)
@@ -212,6 +251,8 @@ $ pnpm monorepo-hash --compare --target="services/backend"
         🚧 changed dependency(s) :
                 • packages\cli-tools
 ```
+
+</details>
 
 ### Usage in CI
 
