@@ -166,6 +166,7 @@ packages:
     expect(exitCode).toBe(1)
 
     const pkgAPath = path.join("packages", "pkg-a")
+
     expect(stdout).toContain("❓ Missing .hash files (1) :")
     expect(stdout).toContain(`• ${pkgAPath}`)
   })
@@ -193,5 +194,4 @@ packages:
     expect(secondA).toBe(firstA)
     expect(secondB).toBe(firstB)
   })
-
 })
