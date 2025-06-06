@@ -569,14 +569,8 @@ async function hash() {
   const total = pkgJsonPaths.length
 
   // 3) compute per-file hashes and ownHash buffers
-  const pkgInfos = await Promise.all(pkgJsonPaths.map(async (pkgJson, i) => {
-    log(
-      `\r🔄 Computing hashes (${zeroPad(i + 1, 2)}/${total}) • ${
-        pkgJson.split("/package.json")[0]
-      }`,
-      true,
-    )
-
+  let count = 0
+  const pkgInfos = await Promise.all(pkgJsonPaths.map(async (pkgJson) => {
     const absJson = path.resolve(repoRoot, pkgJson)
     const dir = path.dirname(absJson)
     const relDir = path.relative(repoRoot, dir)
@@ -591,6 +585,14 @@ async function hash() {
     const perFileMap = await computePerFileHashes(dir, fileList)
     const sortedKeys = Object.keys(perFileMap).sort()
     const ownBuffer = computeOwnHashFromPerFile(perFileMap, sortedKeys)
+
+    count++
+    log(
+      `\r🔄 Computing hashes (${zeroPad(count, 2)}/${total}) • ${
+        pkgJson.split("/package.json")[0]
+      }`,
+      true,
+    )
 
     if (debug) {
       await writeDebugFile(dir, perFileMap)
