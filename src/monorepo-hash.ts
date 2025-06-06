@@ -153,7 +153,7 @@ export async function computePerFileHashes(
   fileList: string[],
 ): Promise<Record<string, string>> {
   const result: Record<string, string> = {}
-  const CONCURRENCY = 50
+  const CONCURRENCY = 100
 
   for (let i = 0; i < fileList.length; i += CONCURRENCY) {
     const batch = fileList.slice(i, i + CONCURRENCY)
@@ -583,6 +583,11 @@ export async function hash(): Promise<void> {
 
   // 3) compute per-file hashes and ownHash buffers
   let count = 0
+  log(
+      `\r🔄 Computing hashes (${zeroPad(count, pad)}/${total})`,
+      true,
+    )
+
   const pkgInfos = await Promise.all(pkgJsonPaths.map(async (pkgJson) => {
     const absJson = path.resolve(repoRoot, pkgJson)
     const dir = path.dirname(absJson)
