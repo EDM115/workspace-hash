@@ -1,4 +1,13 @@
-import fs from "fs-extra"
+import {
+  copyFile,
+  mkdirp,
+  mkdtemp,
+  pathExists,
+  readFile,
+  remove,
+  writeFile,
+  writeJson,
+} from "fs-extra"
 import os from "os"
 import path from "path"
 
@@ -9,21 +18,21 @@ describe("monorepo-hash CLI", () => {
   let tmpRoot: string
 
   beforeEach(async () => {
-    tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "vitest-hash-"))
+    tmpRoot = await mkdtemp(path.join(os.tmpdir(), "vitest-hash-"))
     const pnpmWorkspaceYaml = `
 packages:
   - "packages/*"
 `
 
-    await fs.writeFile(path.join(tmpRoot, "pnpm-workspace.yaml"), pnpmWorkspaceYaml.trim())
+    await writeFile(path.join(tmpRoot, "pnpm-workspace.yaml"), pnpmWorkspaceYaml.trim())
 
     const pkgADir = path.join(tmpRoot, "packages", "pkg-a")
     const pkgBDir = path.join(tmpRoot, "packages", "pkg-b")
 
-    await fs.mkdirp(pkgADir)
-    await fs.mkdirp(pkgBDir)
+    await mkdirp(pkgADir)
+    await mkdirp(pkgBDir)
 
-    await fs.writeJson(
+    await writeJson(
       path.join(pkgADir, "package.json"),
       {
         name: "pkg-a",
@@ -37,12 +46,12 @@ packages:
       { spaces: 2 },
     )
 
-    await fs.writeFile(
+    await writeFile(
       path.join(pkgADir, "index.js"),
       "console.log(\"hello from pkg-a\")\n",
     )
 
-    await fs.writeJson(
+    await writeJson(
       path.join(pkgBDir, "package.json"),
       {
         name: "pkg-b",
@@ -52,20 +61,20 @@ packages:
       { spaces: 2 },
     )
 
-    await fs.writeFile(
+    await writeFile(
       path.join(pkgBDir, "index.js"),
       "export const msg = \"pkg-b\"\n",
     )
 
-    await fs.copyFile(
+    await copyFile(
       path.resolve(import.meta.dirname, "../dist/monorepo-hash.js"),
       path.join(tmpRoot, "monorepo-hash.js"),
     )
   })
 
   afterEach(async () => {
-    if (tmpRoot && (await fs.pathExists(tmpRoot))) {
-      await fs.remove(tmpRoot)
+    if (tmpRoot && (await pathExists(tmpRoot))) {
+      await remove(tmpRoot)
     }
   })
 
@@ -82,11 +91,11 @@ packages:
     const hashAPath = path.join(tmpRoot, "packages", "pkg-a", ".hash")
     const hashBPath = path.join(tmpRoot, "packages", "pkg-b", ".hash")
 
-    expect(await fs.pathExists(hashAPath)).toBe(true)
-    expect(await fs.pathExists(hashBPath)).toBe(true)
+    expect(await pathExists(hashAPath)).toBe(true)
+    expect(await pathExists(hashBPath)).toBe(true)
 
-    const hashA = (await fs.readFile(hashAPath, "utf8")).trim()
-    const hashB = (await fs.readFile(hashBPath, "utf8")).trim()
+    const hashA = (await readFile(hashAPath, "utf8")).trim()
+    const hashB = (await readFile(hashBPath, "utf8")).trim()
 
     expect(hashA).toMatch(/^[0-9a-f]{64}$/)
     expect(hashB).toMatch(/^[0-9a-f]{64}$/)
@@ -123,7 +132,7 @@ packages:
 
     const pkgBIndex = path.join(tmpRoot, "packages", "pkg-b", "index.js")
 
-    await fs.writeFile(pkgBIndex, "export const msg = \"pkg-b (edited)\"\n")
+    await writeFile(pkgBIndex, "export const msg = \"pkg-b (edited)\"\n")
 
     const subprocess = execa("node", [ "monorepo-hash.js", "--compare" ], {
       cwd: tmpRoot,
@@ -143,7 +152,7 @@ packages:
     expect(stdout).toContain(`• ${pkgAPath}`)
     expect(stdout).toMatch(/changed dependency/)
 
-    const changedBlock = stdout.split("⚠️  Changed")[1]
+    const [ , changedBlock ] = stdout.split("⚠️  Changed")
 
     expect(changedBlock).toContain(pkgBPath)
     expect(changedBlock).toContain(pkgAPath)
@@ -154,7 +163,7 @@ packages:
 
     const hashAPath = path.join(tmpRoot, "packages", "pkg-a", ".hash")
 
-    await fs.remove(hashAPath)
+    await remove(hashAPath)
 
     const subprocess = execa("node", [ "monorepo-hash.js", "--compare" ], {
       cwd: tmpRoot,
@@ -177,19 +186,19 @@ packages:
     const hashAPath = path.join(tmpRoot, "packages", "pkg-a", ".hash")
     const hashBPath = path.join(tmpRoot, "packages", "pkg-b", ".hash")
 
-    const firstA = (await fs.readFile(hashAPath, "utf8")).trim()
-    const firstB = (await fs.readFile(hashBPath, "utf8")).trim()
+    const firstA = (await readFile(hashAPath, "utf8")).trim()
+    const firstB = (await readFile(hashBPath, "utf8")).trim()
 
     expect(firstA).toMatch(/^[0-9a-f]{64}$/)
     expect(firstB).toMatch(/^[0-9a-f]{64}$/)
 
-    await fs.remove(hashAPath)
-    await fs.remove(hashBPath)
+    await remove(hashAPath)
+    await remove(hashBPath)
 
     await execa("node", [ "monorepo-hash.js", "--generate" ], { cwd: tmpRoot })
 
-    const secondA = (await fs.readFile(hashAPath, "utf8")).trim()
-    const secondB = (await fs.readFile(hashBPath, "utf8")).trim()
+    const secondA = (await readFile(hashAPath, "utf8")).trim()
+    const secondB = (await readFile(hashBPath, "utf8")).trim()
 
     expect(secondA).toBe(firstA)
     expect(secondB).toBe(firstB)

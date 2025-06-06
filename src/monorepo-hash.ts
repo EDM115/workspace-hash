@@ -152,20 +152,32 @@ export async function computePerFileHashes(
   dir: string,
   fileList: string[],
 ): Promise<Record<string, string>> {
-  const entries = await Promise.all(fileList.map(async (rel) => {
-    const fullPath = path.join(dir, rel)
-    const normalized = rel.split(path.sep).join("/")
-    const content = await fs.readFile(fullPath)
-    const fileHash = crypto
-      .createHash("sha256")
-      .update(normalized)
-      .update(content)
-      .digest("hex")
+  const result: Record<string, string> = {}
+  const CONCURRENCY = 50
 
-    return [ normalized, fileHash ] as [string, string]
-  }))
+  for (let i = 0; i < fileList.length; i += CONCURRENCY) {
+    const batch = fileList.slice(i, i + CONCURRENCY)
 
-  return Object.fromEntries(entries)
+    // oxlint-disable-next-line no-await-in-loop : Needed to not blow up memory with too many concurrent reads
+    const partial = await Promise.all(batch.map(async (rel) => {
+      const fullPath = path.join(dir, rel)
+      const normalized = rel.split(path.sep).join("/")
+      const content = await fs.readFile(fullPath)
+      const fileHash = crypto
+        .createHash("sha256")
+        .update(normalized)
+        .update(content)
+        .digest("hex")
+
+      return [ normalized, fileHash ] as [string, string]
+    }))
+
+    for (const [ norm, partialHash ] of partial) {
+      result[norm] = partialHash
+    }
+  }
+
+  return result
 }
 
 /**
@@ -567,6 +579,7 @@ export async function hash(): Promise<void> {
   // 2) build PackageInfo objects
   const pkgs: Record<string, PackageInfo> = {}
   const total = pkgJsonPaths.length
+  const pad = total < 10 ? 1 : total < 100 ? 2 : total < 1000 ? 3 : 4
 
   // 3) compute per-file hashes and ownHash buffers
   let count = 0
@@ -588,7 +601,7 @@ export async function hash(): Promise<void> {
 
     count++
     log(
-      `\r🔄 Computing hashes (${zeroPad(count, 2)}/${total}) • ${
+      `\r🔄 Computing hashes (${zeroPad(count, pad)}/${total}) • ${
         pkgJson.split("/package.json")[0]
       }`,
       true,
@@ -654,5 +667,5 @@ try {
 } catch (err) {
   console.error("❌ Unexpected error :")
   console.error(err instanceof Error ? err.message : String(err))
-  process.exit(6)
+  process.exit(5)
 }

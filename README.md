@@ -2,21 +2,20 @@
 
 # monorepo-hash
 **A CLI tool to generate hashes for the workspaces of your monorepo**
-  
+
 <img src="./monorepo-hash-logo.png" alt="monorepo-hash logo" width="200" height="200">
 
 ![NPM Version](https://img.shields.io/npm/v/monorepo-hash) ![NPM Downloads](https://img.shields.io/npm/dt/monorepo-hash) ![jsDelivr hits (npm)](https://img.shields.io/jsdelivr/npm/hm/monorepo-hash)  
 ![Dependent repos (via libraries.io)](https://img.shields.io/librariesio/dependent-repos/npm/monorepo-hash) ![Dependents (via libraries.io)](https://img.shields.io/librariesio/dependents/npm/monorepo-hash)  
 ![Libraries.io dependency status for latest release](https://img.shields.io/librariesio/release/npm/monorepo-hash) ![Libraries.io SourceRank](https://img.shields.io/librariesio/sourcerank/npm/monorepo-hash)
-<!-- ![npm bundle size](https://img.shields.io/bundlephobia/min/monorepo-hash) ![npm bundle size (gzip)](https://img.shields.io/bundlephobia/minzip/monorepo-hash)  -->
 
 ## :memo: Features
-:runner: **Fast** : Runs in huge monorepos in no time
-:dart: **Accurate** : Generates hashes based every tracked file
-:left_right_arrow: **Complete** : Supports transitive workspace dependencies
-:ok_hand: **No config** : Drop-in and use instantly
-:computer: **Cross-platform** : Works on Windows, Linux and macOS
-:hash: **Deterministic** : Same input, same output
+:runner: **Fast** : Runs in huge monorepos [in no time](#rocket-benchmarks), processes workspaces in parallel  
+:dart: **Accurate** : Generates hashes based every tracked file  
+:left_right_arrow: **Complete** : Supports transitive workspace dependencies  
+:ok_hand: **No config** : Drop-in and instantly usable  
+:computer: **Cross-platform** : Works on Windows, Linux and macOS  
+:hash: **Deterministic** : Same input, same output  
 :package: **Lightweight** : No bloat, just the essentials
 
 </div>
@@ -24,12 +23,12 @@
 ## :thinking: Why
 When you're working in monorepos, there's often a lot of workspaces (packages) that end up being created.  
 And as your project grows, so does the number of workspaces (and so does your build times...).  
-If you ever worked with techs like Next.js, you know what I'm talking about. And since every workspace requires another, you need everything to be built to test your changes.
+If you ever worked with stuff like Next.js, you know what I'm talking about. And since every workspace requires another, you need everything to be built to test your changes.
 
-Although there are tools that allows your scripts to run only when files have changed (ex `turbo`), the complete CI step cannot benefit from this (ex with `turbo`, it still requires you to copy your entire monorepo to be able to prune it).  
-If only there could be a way to determine if a workspace hasn't changes to not rebuild it for nothing...
+Although there are tools that allows your scripts to run only when files have changed (ex `turbo`), the complete CI step cannot benefit from this. For example with `turbo` again, they allow you to prune just the right workspaces and dependencies when building in a Docker, but this requires to copy the entire monorepo into the container so we can't benefit from Docker's layers caching.  
+If only there could be a way to determine if a workspace hasn't changed to not rebuild it for nothing...
 
-Well lucky you, `monorepo-hash` is here to help you with that !
+Well lucky you, `monorepo-hash` is here to help with that !
 
 > [!NOTE]
 > `monorepo-hash` was created when I was doing my internship at Nexelec.  
@@ -43,7 +42,7 @@ pnpm add -D monorepo-hash
 ```
 Make sure that the `packages` field in your `pnpm-workspace.yaml` file is set up correctly, as `monorepo-hash` will use it to find your workspaces. Globs are supported.  
 `monorepo-hash` will also use the `workspace:` field in your `package.json` files to detect transitive dependencies.  
-Finally, it will generate `.hash` files that you would need to keep in your VCS in order for it to be efficient.
+Finally, it will generate `.hash` files that you would need to keep in your VCS in order for it to be efficient (ex : to be reused in your CI).
 
 ### Get help
 ```bash
@@ -71,7 +70,7 @@ pnpm monorepo-hash --compare
 ### Compare hashes for specific workspaces
 Same as above.
 ```bash
-pnpm monorepo-hash --compare --target="packages/example,services/ui"
+pnpm monorepo-hash --compare --target="packages/example"
 ```
 
 ### Run in silent mode
@@ -81,7 +80,9 @@ pnpm monorepo-hash --compare --silent
 ```
 
 ### Run in debug mode
-The debug mode will output `.debug-hash` files which will contain the hashes of each individual file in the workspace.  
+The debug mode will :
+- in generate mode, output `.debug-hash` files which will contain the hashes of each individual file in the workspace
+- in compare mode, read those `.debug-hash` files and tell you *exactly* which files have changed in each workspace, and what their hashes are  
 This can be useful to check why the hashes appear to be different, or to debug issues with the hashes generation.
 ```bash
 pnpm monorepo-hash --generate --debug
@@ -91,13 +92,12 @@ pnpm monorepo-hash --compare --debug
 Don't forget to delete these files afterwards !
 
 ### Exit codes
-- `0` : Everything is up to date, no changes detected (or you wanted to get help)
+- `0` : No changes detected (or you wanted to get help)
 - `1` : Changes detected in the hashes
 - `2` : Error with the arguments (either `--generate` or `--compare` is missing, or both were provided)
 - `3` : Unknown arguments provided
 - `4` : No workspaces found, either the `pnpm-workspace.yaml` file is missing or the `packages` field is not set up correctly
-- `5` : No workspaces specified, you need to specify at least one workspace to compare
-- `6` : An unexpected error occurred, please open an issue with the logs
+- `5` : An unexpected error occurred, please open an issue with the logs
 
 ## :test_tube: Examples
 ### Outputs
@@ -113,11 +113,11 @@ Don't forget to delete these files afterwards !
   I recommend to set this up in your IDE config and for your formatter.
 
 ## :hammer_and_wrench: Contributing
-Here's a quick guide to contributing to `monorepo-hash` :
-1. Fork the repository (and star it)
+Here's a quick guide for contributing to `monorepo-hash` :
+1. Fork the repository (and star it :wink:)
 2. Clone your fork
   ```bash
-  git clone https://github.com/your-username/monorepo-hash.git
+  git clone https://github.com/USERNAME/monorepo-hash.git
   cd monorepo-hash
   pnpm i
   ```
@@ -131,7 +131,8 @@ Here's a quick guide to contributing to `monorepo-hash` :
 6. Open a pull request
 
 ## :money_with_wings: Donate
-I'm a small developer from France, and as I write this I'm actively searching for a job. If you want to support me, here's how you can do it :
+I'm a young developer from France, and as I write this I'm actively seeking for a job.  
+If you want to support me, here's how you can do it :
 - Star this repository
 - Follow me on [GitHub](https://github.com/EDM115)
 - Donate :
@@ -141,4 +142,4 @@ I'm a small developer from France, and as I write this I'm actively searching fo
   - [Donate on Telegram](https://t.me/EDM115bots/698)
 
 ## :scroll: License
-- `monorepo-hash` is licensed under the [MIT License](https://github.com/EDM115/monorepo-hash/blob/master/LICENSE)
+`monorepo-hash` is licensed under the [MIT License](https://github.com/EDM115/monorepo-hash/blob/master/LICENSE)
