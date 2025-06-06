@@ -33,14 +33,14 @@ for (const arg of argv) {
   if (arg === "--generate" || arg === "-g") {
     if (mode === "compare") {
       console.error("❌ Cannot specify both --generate and --compare")
-      process.exit(1)
+      process.exit(2)
     }
 
     mode = "generate"
   } else if (arg === "--compare" || arg === "-c") {
     if (mode === "generate") {
       console.error("❌ Cannot specify both --generate and --compare")
-      process.exit(1)
+      process.exit(2)
     }
 
     mode = "compare"
@@ -70,7 +70,7 @@ Arguments :
   } else {
     console.error(`❌ Unknown option : ${arg}`)
 
-    process.exit(1)
+    process.exit(3)
   }
 }
 
@@ -259,7 +259,7 @@ if (targets) {
 if (!mode) {
   console.error("❌ Must specify either --generate (-g) or --compare (-c)")
 
-  process.exit(1)
+  process.exit(2)
 } else {
   if (mode === "generate") {
     if (targets) {
@@ -286,7 +286,7 @@ const wsYaml: string | undefined = await findUp("pnpm-workspace.yaml")
 if (!wsYaml || !(await exists(wsYaml))) {
   console.error("❌ pnpm-workspace.yaml not found")
 
-  process.exit(1)
+  process.exit(4)
 }
 
 const repoRoot: string = path.dirname(wsYaml)
@@ -299,7 +299,7 @@ const workspaceGlobs: string[] = Array.isArray(wsConfig.packages)
 if (workspaceGlobs.length === 0) {
   console.error("❌ No \"packages:\" entries in pnpm-workspace.yaml")
 
-  process.exit(1)
+  process.exit(4)
 }
 
 // Compile root .gitignore
@@ -654,5 +654,5 @@ try {
 } catch (err) {
   console.error("❌ Unexpected error :")
   console.error(err instanceof Error ? err.message : String(err))
-  process.exit(1)
+  process.exit(6)
 }
