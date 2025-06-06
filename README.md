@@ -11,7 +11,7 @@
 
 ## :memo: Features
 :runner: **Fast** : Runs in huge monorepos [in no time](#rocket-benchmarks), processes workspaces in parallel  
-:dart: **Accurate** : Generates hashes based every tracked file  
+:dart: **Accurate** : Generates hashes based on every tracked file  
 :left_right_arrow: **Complete** : Supports transitive workspace dependencies  
 :ok_hand: **No config** : Drop-in and instantly usable  
 :computer: **Cross-platform** : Works on Windows, Linux and macOS  
@@ -21,11 +21,11 @@
 </div>
 
 ## :thinking: Why
-When you're working in monorepos, there's often a lot of workspaces (packages) that end up being created.  
+When you're working with monorepos, there's often a lot of workspaces (packages) that end up being created.  
 And as your project grows, so does the number of workspaces (and so does your build times...).  
 If you ever worked with stuff like Next.js, you know what I'm talking about. And since every workspace requires another, you need everything to be built to test your changes.
 
-Although there are tools that allows your scripts to run only when files have changed (ex `turbo`), the complete CI step cannot benefit from this. For example with `turbo` again, they allow you to prune just the right workspaces and dependencies when building in a Docker, but this requires to copy the entire monorepo into the container so we can't benefit from Docker's layers caching.  
+Although there are tools that allow your scripts to run only when files have changed (ex `turbo`), the complete CI step cannot benefit from this. For example with `turbo` again, they allow you to prune just the right workspaces and dependencies when building in a Docker, but this requires copying the entire monorepo into the container so we can't benefit from Docker's layers caching.  
 If only there could be a way to determine if a workspace hasn't changed to not rebuild it for nothing...
 
 Well lucky you, `monorepo-hash` is here to help with that !
@@ -40,15 +40,17 @@ You can install `monorepo-hash` globally, but it's best to add it as a dev depen
 ```bash
 pnpm add -D monorepo-hash
 ```
-Make sure that the `packages` field in your `pnpm-workspace.yaml` file is set up correctly, as `monorepo-hash` will use it to find your workspaces. Globs are supported.  
-`monorepo-hash` will also use the `workspace:` field in your `package.json` files to detect transitive dependencies.  
-Finally, it will generate `.hash` files that you would need to keep in your VCS in order for it to be efficient (ex : to be reused in your CI).
+> [!TIP]  
+> Make sure that the `packages` field in your `pnpm-workspace.yaml` file is set up correctly, as `monorepo-hash` will use it to find your workspaces. Globs are supported.  
+> `monorepo-hash` will also use the `workspace:` field in your `package.json` files to detect transitive dependencies.  
+> Finally, it will generate `.hash` files that you would need to keep in your VCS in order for it to be efficient (ex : to be reused in your CI).
 
 ### Get help
 ```bash
 pnpm monorepo-hash --help
 ```
-Short versions of all arguments are also available.
+> [!TIP]  
+> Short versions of all arguments are also available.
 
 ### Generate hashes for your entire monorepo
 ```bash
@@ -68,7 +70,7 @@ pnpm monorepo-hash --compare
 ```
 
 ### Compare hashes for specific workspaces
-Same as above.
+Same rules apply.
 ```bash
 pnpm monorepo-hash --compare --target="packages/example"
 ```
@@ -81,7 +83,7 @@ pnpm monorepo-hash --compare --silent
 
 ### Run in debug mode
 The debug mode will :
-- in generate mode, output `.debug-hash` files which will contain the hashes of each individual file in the workspace
+- in generate mode, output `.debug-hash` files which will contain the hashes of each individual file in the workspace as a JSON object
 - in compare mode, read those `.debug-hash` files and tell you *exactly* which files have changed in each workspace, and what their hashes are  
 This can be useful to check why the hashes appear to be different, or to debug issues with the hashes generation.
 ```bash
@@ -255,8 +257,8 @@ $ pnpm monorepo-hash --compare --target="services/backend"
 </details>
 
 ### Usage in CI
-This was the main reason I created this tool, and whether it's in GitHub Actions or locally through [act](https://github.com/nektos/act), it can help you ensure reduce drastically CI times.  
-Here's an example workflow that uses `monorepo-hash` to only build the workspaces that have changed, and then run tests on them :
+This was the main reason I created this tool, and whether it's in GitHub Actions or locally through [act](https://github.com/nektos/act), it can help you to reduce drastically CI times.  
+Here's an example workflow that uses `monorepo-hash` to only build the workspaces that have changed :
 ```yaml
 # The boring stuff
 
@@ -337,19 +339,19 @@ jobs:
             hash-files-${{ runner.os }}-pnpm-
 ```
 Here we use the actions cache to store the `.hash` files, so that we can reuse them in the next runs.  
-This is especially useful because when yu generate hashes, the action will pick them up from the latest commit and not the latest run.
+This is especially useful because when you generate hashes, the action will pick them up from the latest commit and not the latest run.
 
 ## :construction: Limitations
 - Only works with `PNPM` for now  
   If you really need support for `Yarn` or `NPM`, feel free to open an issue or even submit a pull request !
 - Bases the transitive dependency detection on the `workspace:` field in the `package.json` files
 - If you use another Version Control System than `git`, we can't ignore your files correctly for the hashes generation
-- Your EOL (End of Line) should be consistent accross your files and the different environements it's being used on. Since Docker containers and GitHub Actions runners are based on Linux, it's recommended to use `LF` as EOL.  
-  I recommend to set this up in your IDE config and your formatter.  
-- Due to workspace transitive dependencies, the hashes needs to be regenerated for all workspaces even when comparing only a few targets. Fortunately, this is pretty fast, see the benchmarks below.
+- Your EOL (End of Line) should be consistent across your monorepo's files and the different environments it's being used in. Since Docker containers and GitHub Actions runners are based on Linux, it's recommended to use `LF` as EOL.  
+  I recommend to set this up in your IDE and formatter config.  
+- Due to workspace transitive dependencies, the hashes need to be regenerated for all workspaces even when comparing only a few targets. Fortunately, this is pretty fast, see the benchmarks below.
 
 ## :rocket: Benchmarks
-These benchmarks hasve been realised on a Windows 11 laptop with an AMD Ryzen 5 5500U CPU clocked at 2.10 GHz, 16 Gb of DDR3 RAM and an old SSD (needless to say, not a performant machine).  
+These benchmarks have been realised on a Windows 11 laptop with an AMD Ryzen 5 5500U CPU clocked at 2.10 GHz, 16 Gb of DDR3 RAM and an old SSD (needless to say, not a very performant machine).  
 They have been reproduced multiple time with a warm cache (node already run once) and with all applications closed.  
 **Small monorepo, 5k LoC : <ins>150 ms</ins>** (5 workspaces of 100 files each, files composed of 1 line of text)  
 **Medium monorepo, 505k LoC : <ins>2.66 s</ins>** (5 workspaces of 100 folders each, with each folder containing 100 files, files composed of 10 lines of text)  
