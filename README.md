@@ -101,6 +101,117 @@ Don't forget to delete these files afterwards !
 
 ## :test_tube: Examples
 ### Outputs
+Tested in the [small monorepo](tests/demo/small-monorepo.7z), with the following directory structure :
+```
+.
+├── database
+├── packages
+│   ├── cli-tools
+│   └── linter
+├── services
+│   ├── backend
+│   └── frontend
+└── pnpm-workspace.yaml
+```
+
+**Hash generation** :
+```bash
+$ pnpm monorepo-hash --generateℹ️  Generating hashes for all workspaces...
+
+✅ Computed all hashes (5)
+
+✅ services\backend (f4cc294c3165f90990c03a4285796f98555b35bcf845981710a92ce66c7166e3) written to .hash
+✅ packages\linter (c3f5ddaafb7382c35fa1b8045955c56a9a8b03754ed2cf3021acc335093d7e0d) written to .hash
+✅ packages\cli-tools (b85b9d51a1536c94094fb652e7e577e36ac154072d3de8e42f3b3eb81e669054) written to .hash
+✅ services\frontend (d5be1221077403acfd888a60ed5e11c66a1394d6ae044fe026ca199093b81f9b) written to .hash
+✅ database (adb587b8758d1a9066a1a479ce4da12765b5cf128f5538312a017af233f85adb) written to .hash
+```
+
+**Hash comparison - no changes** :
+```bash
+$ pnpm monorepo-hash --compare
+ℹ️  Generating hashes for all workspaces...
+
+✅ Computed all hashes (5)
+
+✅ services\backend (f4cc294c3165f90990c03a4285796f98555b35bcf845981710a92ce66c7166e3) written to .hash
+✅ packages\linter (c3f5ddaafb7382c35fa1b8045955c56a9a8b03754ed2cf3021acc335093d7e0d) written to .hash
+✅ packages\cli-tools (b85b9d51a1536c94094fb652e7e577e36ac154072d3de8e42f3b3eb81e669054) written to .hash
+✅ services\frontend (d5be1221077403acfd888a60ed5e11c66a1394d6ae044fe026ca199093b81f9b) written to .hash
+✅ database (adb587b8758d1a9066a1a479ce4da12765b5cf128f5538312a017af233f85adb) written to .hash
+```
+
+**Hash comparison - changes detected** :
+```bash
+ℹ️  Comparing hashes for all workspaces...
+
+✅ Computed all hashes (5)
+
+⚠️  Changed (5) :
+• database
+        old : adb587b8758d1a9066a1a479ce4da12765b5cf128f5538312a017af233f85adb
+        new : c1ef17109f6a0b830d2c071934df47454b87389100cf573d918afca3f0958a6e
+        🚧 changed dependency(s) :
+                • packages\linter
+• packages\linter
+        old : c3f5ddaafb7382c35fa1b8045955c56a9a8b03754ed2cf3021acc335093d7e0d
+        new : b12603b6d38b7bbf1c1ecea354e7e7bf5f7dc4ea42665e4935343d6f7c8b6ec9
+• packages\cli-tools
+        old : b85b9d51a1536c94094fb652e7e577e36ac154072d3de8e42f3b3eb81e669054
+        new : f161ac1745e45054fa6123969f7cf08a818c1096b109d82b553d27551031d987
+        🚧 changed dependency(s) :
+                • packages\linter
+• services\backend
+        old : f4cc294c3165f90990c03a4285796f98555b35bcf845981710a92ce66c7166e3
+        new : d27dc39124bef0de217d630ad891f79227780beda86893dca9ed5ff82fb06827
+        🚧 changed dependency(s) :
+                • packages\linter
+                • database
+                • packages\cli-tools
+• services\frontend
+        old : d5be1221077403acfd888a60ed5e11c66a1394d6ae044fe026ca199093b81f9b
+        new : 36ffd97f62ab83a109f28549d3f23754e5e6d10a357f83ac76f63c6fec093efc
+        🚧 changed dependency(s) :
+                • packages\linter
+```
+
+**Hash generation - specific workspaces** :
+```bash
+$ pnpm monorepo-hash --generate --target="packages/cli-tools,services/frontend"
+ℹ️  Generating hashes for specified targets... (packages\cli-tools, services\frontend)
+
+✅ Computed all hashes (5)
+
+✅ packages\cli-tools (f161ac1745e45054fa6123969f7cf08a818c1096b109d82b553d27551031d987) written to .hash
+✅ services\frontend (36ffd97f62ab83a109f28549d3f23754e5e6d10a357f83ac76f63c6fec093efc) written to .hash
+```
+
+**Hash comparison - specific workspaces - no changes** :
+```bash
+$ pnpm monorepo-hash --compare --target="packages/cli-tools,services/frontend"
+ℹ️  Comparing hashes for specified targets... (packages\cli-tools, services\frontend)
+
+✅ Computed all hashes (5)
+
+✅ Unchanged (2) :
+• packages\cli-tools
+• services\frontend
+```
+
+**Hash comparison - specific workspaces - changes detected** :
+```bash
+$ pnpm monorepo-hash --compare --target="services/backend"
+ℹ️  Comparing hashes for specified targets... (services\backend)
+
+✅ Computed all hashes (5)
+
+⚠️  Changed (1) :
+• services\backend
+        old : f4cc294c3165f90990c03a4285796f98555b35bcf845981710a92ce66c7166e3
+        new : 8d61651bdb6f3219625bf910019ddfec0d32257f025f4c8f7f1018115287ae11
+        🚧 changed dependency(s) :
+                • packages\cli-tools
+```
 
 ### Usage in CI
 
@@ -110,7 +221,15 @@ Don't forget to delete these files afterwards !
 - Bases the transitive dependency detection on the `workspace:` field in the `package.json` files
 - If you use another Version Control System than `git`, we can't ignore your files correctly for the hashes generation
 - Your EOL (End of Line) should be consistent accross your files and the different environements it's being used on. Since Docker containers and GitHub Actions runners are based on Linux, it's recommended to use `LF` as EOL.  
-  I recommend to set this up in your IDE config and for your formatter.
+  I recommend to set this up in your IDE config and your formatter.
+
+## :rocket: Benchmarks
+These benchmarks hasve been realised on a Windows 11 laptop with an AMD Ryzen 5 5500U CPU clocked at 2.10 GHz, 16 Gb of DDR3 RAM and an SSD (needless to say, not a performant machine).  
+They have been reproduced multiple time with a warm cache (node already run once) and with all applications closed.  
+**Small monorepo, 5k LoC** (5 workspaces of 100 files each, files composed of 1 line of text) : The generation took 150 ms  
+**Medium monorepo, 505k LoC** (5 workspaces of 100 folders each, with each folder containing 100 files, files composed of 10 lines of text) : The generation took 2.66 s  
+**Large monorepo, 505m LoC** (5 workspaces of 100 folders each, with each folder containing 10 files and 10 folders, and each of these folders containing 100 files, files composed of 100 lines of text) : The generation took 47.7 s  
+In order to not clunk up Git, these [demo repos](tests/demo/) are compressed.
 
 ## :hammer_and_wrench: Contributing
 Here's a quick guide for contributing to `monorepo-hash` :
