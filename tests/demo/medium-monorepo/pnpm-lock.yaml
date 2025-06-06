@@ -1,0 +1,42 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .: {}
+
+  database:
+    devDependencies:
+      linter:
+        specifier: workspace:^
+        version: link:../packages/linter
+
+  packages/cli-tools:
+    devDependencies:
+      linter:
+        specifier: workspace:^
+        version: link:../linter
+
+  packages/linter: {}
+
+  services/backend:
+    dependencies:
+      cli-tools:
+        specifier: workspace:^
+        version: link:../../packages/cli-tools
+      database:
+        specifier: workspace:^
+        version: link:../../database
+    devDependencies:
+      linter:
+        specifier: workspace:^
+        version: link:../../packages/linter
+
+  services/frontend:
+    devDependencies:
+      linter:
+        specifier: workspace:^
+        version: link:../../packages/linter
