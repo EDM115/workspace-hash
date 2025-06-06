@@ -11,9 +11,9 @@ import yaml from "js-yaml"
 
 import { findUp } from "find-up"
 
-type PnpmWorkspaceConfig = { packages?: string[] }
+export type PnpmWorkspaceConfig = { packages?: string[] }
 
-interface PackageInfo {
+export interface PackageInfo {
   dir: string
   relDir: string
   deps: string[]
@@ -74,7 +74,7 @@ Arguments :
   }
 }
 
-function log(message: string, overwrite = false) {
+export function log(message: string, overwrite = false): void {
   if (!silent) {
     if (
       overwrite
@@ -91,7 +91,7 @@ function log(message: string, overwrite = false) {
   }
 }
 
-async function exists(f: PathLike): Promise<boolean> {
+export async function exists(f: PathLike): Promise<boolean> {
   try {
     await fs.stat(f)
 
@@ -101,14 +101,14 @@ async function exists(f: PathLike): Promise<boolean> {
   }
 }
 
-function zeroPad(num: number, places: number) {
+export function zeroPad(num: number, places: number): string {
   return String(num).padStart(places, "0")
 }
 
 /**
  * Given a workspace directory (`dir`) and its repo-relative path (`relDir`), return a sorted array of all file-relative paths (using OS-specific separators), after applying root and package‐level .gitignore filters.
  */
-async function getWorkspaceFileList(
+export async function getWorkspaceFileList(
   dir: string,
   relDir: string,
   rootIgnore: ignore.Ignore,
@@ -148,7 +148,7 @@ async function getWorkspaceFileList(
  * For a given `dir` and list of relative file paths (`fileList`), compute per-file SHA-256 on (normalizedPath + rawContent).
  * Always returns a map : { "posix/rel/path": "hex" }
  */
-async function computePerFileHashes(
+export async function computePerFileHashes(
   dir: string,
   fileList: string[],
 ): Promise<Record<string, string>> {
@@ -171,7 +171,7 @@ async function computePerFileHashes(
 /**
  * Given a per-file‐hash map and its sorted keys, produce the "ownHash" Buffer by concatenating each raw hash‐buffer (in sorted key order) and feeding them into a SHA-256.
  */
-function computeOwnHashFromPerFile(
+export function computeOwnHashFromPerFile(
   perFileMap: Record<string, string>,
   sortedKeys: string[],
 ): Buffer {
@@ -190,7 +190,7 @@ function computeOwnHashFromPerFile(
 /**
  * Recursively compute the final (aggregate) hash for `pkgName`, given a map of all PackageInfo, storing ownHash as Buffer.
  */
-function computeFinalHash(
+export function computeFinalHash(
   pkgName: string,
   pkgs: Record<string, PackageInfo>,
   cache: Record<string, string>,
@@ -226,7 +226,7 @@ function computeFinalHash(
 /**
  * Write a JSON‐serialized debug map to `.debug-hash` in `dir`
  */
-async function writeDebugFile(
+export async function writeDebugFile(
   dir: string,
   debugMap: Record<string, string>,
 ): Promise<void> {
@@ -239,7 +239,7 @@ async function writeDebugFile(
  * Load the existing `.debug-hash` JSON from `dir`, if present.
  * Otherwise returns null.
  */
-async function loadDebugFile(dir: string): Promise<Record<string, string> | null> {
+export async function loadDebugFile(dir: string): Promise<Record<string, string> | null> {
   const debugPath = path.join(dir, ".debug-hash")
 
   if (!(await exists(debugPath))) {
@@ -281,7 +281,7 @@ if (!mode) {
 }
 
 // Load pnpm-workspace.yaml
-const wsYaml = await findUp("pnpm-workspace.yaml")
+const wsYaml: string | undefined = await findUp("pnpm-workspace.yaml")
 
 if (!wsYaml || !(await exists(wsYaml))) {
   console.error("❌ pnpm-workspace.yaml not found")
@@ -289,9 +289,9 @@ if (!wsYaml || !(await exists(wsYaml))) {
   process.exit(1)
 }
 
-const repoRoot = path.dirname(wsYaml)
+const repoRoot: string = path.dirname(wsYaml)
 
-const wsConfig = yaml.load(await fs.readFile(wsYaml, "utf8")) as PnpmWorkspaceConfig
+const wsConfig: PnpmWorkspaceConfig = yaml.load(await fs.readFile(wsYaml, "utf8")) as PnpmWorkspaceConfig
 const workspaceGlobs: string[] = Array.isArray(wsConfig.packages)
   ? wsConfig.packages
   : []
@@ -304,7 +304,7 @@ if (workspaceGlobs.length === 0) {
 
 // Compile root .gitignore
 let rootIgnore = ignore()
-const rootGit = path.join(repoRoot, ".gitignore")
+const rootGit: string = path.join(repoRoot, ".gitignore")
 
 if (await exists(rootGit)) {
   const rootGitContents = await fs.readFile(rootGit, "utf8")
@@ -315,7 +315,7 @@ if (await exists(rootGit)) {
   rootIgnore.add("**/.debug-hash")
 }
 
-async function generateDebug(info: PackageInfo): Promise<void> {
+export async function generateDebug(info: PackageInfo): Promise<void> {
   const oldDebug = await loadDebugFile(info.dir)
 
   if (oldDebug) {
@@ -344,7 +344,7 @@ async function generateDebug(info: PackageInfo): Promise<void> {
   }
 }
 
-async function generateHashes(pkgs: Record<string, PackageInfo>, finalCache: Record<string, string>) {
+export async function generateHashes(pkgs: Record<string, PackageInfo>, finalCache: Record<string, string>): Promise<void> {
   const writes = Object.entries(pkgs)
     // If the user passed --target, only write those relDirs
     .filter(([ _, { relDir }]) => !targets || targets.includes(relDir))
@@ -359,7 +359,7 @@ async function generateHashes(pkgs: Record<string, PackageInfo>, finalCache: Rec
   await Promise.all(writes)
 }
 
-async function compareHashes(pkgs: Record<string, PackageInfo>, finalCache: Record<string, string>) {
+export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCache: Record<string, string>): Promise<void> {
   // 1) figure out exactly which workspaces have changed without filtering by targets
   const changeChecks = await Promise.all(Object.entries(pkgs).map(async ([ pkgName, info ]) => {
     const currentHex = finalCache[pkgName]
@@ -557,7 +557,7 @@ async function compareHashes(pkgs: Record<string, PackageInfo>, finalCache: Reco
   }
 }
 
-async function hash() {
+export async function hash(): Promise<void> {
   // 1) find every workspace's package.json
   const pkgJsonPaths = await fg(
     workspaceGlobs.map((glob) => path.posix.join(glob, "package.json")),
