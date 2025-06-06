@@ -1,6 +1,0 @@
-{
-  "name": "small-monorepo",
-  "version": "1.0.0",
-  "type": "module",
-  "packageManager": "pnpm@10.11.1"
-}
