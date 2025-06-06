@@ -262,14 +262,16 @@ $ pnpm monorepo-hash --compare --target="services/backend"
 - Bases the transitive dependency detection on the `workspace:` field in the `package.json` files
 - If you use another Version Control System than `git`, we can't ignore your files correctly for the hashes generation
 - Your EOL (End of Line) should be consistent accross your files and the different environements it's being used on. Since Docker containers and GitHub Actions runners are based on Linux, it's recommended to use `LF` as EOL.  
-  I recommend to set this up in your IDE config and your formatter.
+  I recommend to set this up in your IDE config and your formatter.  
+- Due to workspace transitive dependencies, the hashes needs to be regenerated for all workspaces even when comparing only a few targets. Fortunately, this is pretty fast, see the benchmarks below.
 
 ## :rocket: Benchmarks
-These benchmarks hasve been realised on a Windows 11 laptop with an AMD Ryzen 5 5500U CPU clocked at 2.10 GHz, 16 Gb of DDR3 RAM and an SSD (needless to say, not a performant machine).  
+These benchmarks hasve been realised on a Windows 11 laptop with an AMD Ryzen 5 5500U CPU clocked at 2.10 GHz, 16 Gb of DDR3 RAM and an old SSD (needless to say, not a performant machine).  
 They have been reproduced multiple time with a warm cache (node already run once) and with all applications closed.  
-**Small monorepo, 5k LoC** (5 workspaces of 100 files each, files composed of 1 line of text) : The generation took 150 ms  
-**Medium monorepo, 505k LoC** (5 workspaces of 100 folders each, with each folder containing 100 files, files composed of 10 lines of text) : The generation took 2.66 s  
-**Large monorepo, 505m LoC** (5 workspaces of 100 folders each, with each folder containing 10 files and 10 folders, and each of these folders containing 100 files, files composed of 100 lines of text) : The generation took 47.7 s  
+**Small monorepo, 5k LoC : <ins>150 ms</ins>** (5 workspaces of 100 files each, files composed of 1 line of text)  
+**Medium monorepo, 505k LoC : <ins>2.66 s</ins>** (5 workspaces of 100 folders each, with each folder containing 100 files, files composed of 10 lines of text)  
+**Large monorepo, 505m LoC : <ins>47.7 s</ins>** (5 workspaces of 100 folders each, with each folder containing 10 files and 10 folders, and each of these folders containing 100 files, files composed of 100 lines of text)
+
 In order to not clunk up Git, these [demo repos](tests/demo/) are compressed.
 
 ## :hammer_and_wrench: Contributing
