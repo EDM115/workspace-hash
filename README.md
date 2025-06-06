@@ -352,7 +352,8 @@ This is especially useful because when you generate hashes, the action will pick
 
 ## :rocket: Benchmarks
 These benchmarks have been realised on a Windows 11 laptop with an AMD Ryzen 5 5500U CPU clocked at 2.10 GHz, 16 Gb of DDR3 RAM and an old SSD (needless to say, not a very performant machine).  
-They have been reproduced multiple time with a warm cache (node already run once) and with all applications closed.  
+They have been reproduced multiple time with a warm cache (node already run once) and with all applications closed.
+
 **Small monorepo, 5k LoC : <ins>150 ms</ins>** (5 workspaces of 100 files each, files composed of 1 line of text)  
 **Medium monorepo, 505k LoC : <ins>2.66 s</ins>** (5 workspaces of 100 folders each, with each folder containing 100 files, files composed of 10 lines of text)  
 **Large monorepo, 505m LoC : <ins>47.7 s</ins>** (5 workspaces of 100 folders each, with each folder containing 10 files and 10 folders, and each of these folders containing 100 files, files composed of 100 lines of text)
