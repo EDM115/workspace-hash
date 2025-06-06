@@ -17,5 +17,6 @@
     "types": [ "node" ],
     "verbatimModuleSyntax": true
   },
-  "include": [ "src", "tests" ]
+  "include": [ "src", "tests" ],
+  "exclude": [ "node_modules", "dist", "tests/demo" ],
 }

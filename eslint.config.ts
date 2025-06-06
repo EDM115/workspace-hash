@@ -9,7 +9,7 @@ import { configs as tsEslintConfigs } from "typescript-eslint"
 
 export default [
   {
-    ignores: [ "**/dist/", "**/node_modules/" ],
+    ignores: [ "**/dist/", "**/node_modules/", "tests/demo" ],
   },
   js.configs.all,
   ...tsEslintConfigs.recommended,

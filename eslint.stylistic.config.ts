@@ -4,7 +4,7 @@ import eslintPluginImportX from "eslint-plugin-import-x"
 
 export default [
   {
-    ignores: [ "**/dist/", "**/node_modules/" ],
+    ignores: [ "**/dist/", "**/node_modules/", "tests/demo" ],
   },
   {
     files: [ "**/*.{js,ts}" ],

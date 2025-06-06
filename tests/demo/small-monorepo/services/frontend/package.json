@@ -1,0 +1,8 @@
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "devDependencies": {
+    "linter": "workspace:^"
+  }
+}
