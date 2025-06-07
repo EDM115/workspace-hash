@@ -339,7 +339,8 @@ jobs:
             hash-files-${{ runner.os }}-pnpm-
 ```
 Here we use the actions cache to store the `.hash` files, so that we can reuse them in the next runs.  
-This is especially useful because when you generate hashes, the action will pick them up from the latest commit and not the latest run.
+This is especially useful because when you generate hashes, the action will pick them up from the latest commit and not the latest run.  
+For the very first run, you might need to create a workflow which will only checkout and save the .hash files in a cache for future runs.
 
 ## :construction: Limitations
 - Only works with `PNPM` for now  
@@ -358,7 +359,7 @@ They have been reproduced multiple time with a warm cache (node already run once
 **Medium monorepo, 505k LoC : <ins>2.66 s</ins>** (5 workspaces of 100 folders each, with each folder containing 100 files, files composed of 10 lines of text)  
 **Large monorepo, 505m LoC : <ins>47.7 s</ins>** (5 workspaces of 100 folders each, with each folder containing 10 files and 10 folders, and each of these folders containing 100 files, files composed of 100 lines of text)
 
-In order to not clunk up Git, these [demo repos](tests/demo/) are compressed.
+In order to not clunk up Git, these [demo repos](./tests/demo/) are compressed.
 
 ## :hammer_and_wrench: Contributing
 Here's a quick guide for contributing to `monorepo-hash` :
