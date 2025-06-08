@@ -379,6 +379,11 @@ Here's a quick guide for contributing to `monorepo-hash` :
 5. Commit your changes
 6. Open a pull request
 
+## :eyes: Who uses `monorepo-hash` ?
+- [Nexelec](https://nexelec.eu)
+
+If you use `monorepo-hash` in your project(s), whether you're an individual or a company, please let me know by opening an issue or a pull request, and I'll add you to this list !
+
 ## :money_with_wings: Donate
 I'm a young developer from France, and as I write this I'm actively seeking for a job.  
 If you want to support me, here's how you can do it :
