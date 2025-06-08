@@ -1,0 +1,41 @@
+name: Run the tests suite
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  pr-check:
+    name: "Tests check"
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 10
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - name: "Bump Node.js to v24"
+        uses: actions/setup-node@v4
+        with:
+          node-version: latest
+          check-latest: true
+
+      - name: "Install pnpm"
+        uses: pnpm/action-setup@v4
+
+      - name: "Install dependencies"
+        run: pnpm i
+
+      - name: "Lint check"
+        run: pnpm lint
+      
+      - name: "Types check"
+        run: pnpm typecheck
+
+      - name: "Build the project"
+        run: pnpm build
+
+      - name: "Run the tests"
+        run: pnpm test

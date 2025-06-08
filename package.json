@@ -63,7 +63,7 @@
       "url": "https://t.me/EDM115bots/698"
     }
   ],
-  "homepage": "https://github.com/EDM115/monorepo-hash",
+  "homepage": "https://github.com/EDM115/monorepo-hash#readme",
   "keywords": [
     "monorepo",
     "hash",
@@ -73,7 +73,7 @@
   "main": "./dist/monorepo-hash.js",
   "module": "./dist/monorepo-hash.js",
   "name": "monorepo-hash",
-  "packageManager": "pnpm@10.11.1",
+  "packageManager": "pnpm@10.12.1",
   "publishConfig": {
     "access": "public"
   },
