@@ -117,7 +117,13 @@ packages:
     })
 
     const hashEntries = await Promise.all(hashPromises)
-    const hashes: Record<string, string> = Object.fromEntries(hashEntries)
+    const normalizedEntries = hashEntries.map(([ rel, hash ]) => {
+      const posixRel = rel.split(path.sep).join("/")
+
+      return [ posixRel, hash ] as const
+    })
+
+    const hashes: Record<string, string> = Object.fromEntries(normalizedEntries)
 
     expect(hashes).toMatchSnapshot()
   })
@@ -177,9 +183,9 @@ packages:
 
       return [ rel, exists ] as const
     })
-    
+
     const existsResults = await Promise.all(existsPromises)
-    
+
     for (const [ rel, exists ] of existsResults) {
       if (rel === path.join("services", "backend")) {
         expect(exists).toBe(true)

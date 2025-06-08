@@ -54,6 +54,7 @@ describe("exit codes", () => {
 
     const workspaceFilePath = path.join(globalThis.tmpRoot, "pnpm-workspace.yaml")
     const workspaceContent = await readFile(workspaceFilePath, "utf8")
+
     await remove(workspaceFilePath)
     const result = await execa(cli, [ cliScript, "--generate" ], { cwd, reject: false })
 
@@ -70,6 +71,7 @@ describe("exit codes", () => {
     // Corrupt pkg-a package.json to trigger a parse error
     const packageJsonPath = path.join(globalThis.tmpRoot, "packages", "pkg-a", "package.json")
     const packageJsonContent = await readFile(packageJsonPath, "utf8")
+
     await writeFile(packageJsonPath, "{ invalid json }")
     const result = await execa(cli, [ cliScript, "--generate" ], { cwd, reject: false })
 
