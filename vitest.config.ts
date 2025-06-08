@@ -6,6 +6,8 @@ export default defineConfig({
     logHeapUsage: true,
     open: false,
     pool: "threads",
+    reporters: [ "verbose" ],
+    setupFiles: [ "tests/setup.ts" ],
     typecheck: {
       enabled: true,
     },
