@@ -4,6 +4,7 @@ import {
   writeFile,
   readFile,
   remove,
+  writeJson,
 } from "fs-extra"
 import { execa } from "execa"
 import {
@@ -61,6 +62,29 @@ describe("exit codes", () => {
     expect(result.exitCode).toBe(4)
 
     await writeFile(workspaceFilePath, workspaceContent)
+  })
+
+  it("uses package.json workspaces when pnpm-workspace.yaml is missing", async () => {
+    if (!globalThis.tmpRoot) {
+      throw new Error("tmpRoot is not set")
+    }
+
+    const workspaceFilePath = path.join(globalThis.tmpRoot, "pnpm-workspace.yaml")
+    const workspaceContent = await readFile(workspaceFilePath, "utf8")
+
+    await remove(workspaceFilePath)
+    await writeJson(
+      path.join(globalThis.tmpRoot, "package.json"),
+      { private: true, workspaces: ["packages/*"] },
+      { spaces: 2 },
+    )
+
+    const result = await execa(cli, [ cliScript, "--generate" ], { cwd, reject: false })
+
+    expect(result.exitCode).toBe(0)
+
+    await writeFile(workspaceFilePath, workspaceContent)
+    await remove(path.join(globalThis.tmpRoot, "package.json"))
   })
 
   it("returns 5 on unexpected error", async () => {

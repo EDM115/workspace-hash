@@ -54,7 +54,7 @@ for (const arg of argv) {
     debug = true
   } else if (arg === "--help" || arg === "-h") {
     console.log(`
-A simple script to generate or compare .hash files for pnpm workspaces.
+A simple script to generate or compare .hash files for pnpm or Yarn workspaces.
 The goal is to help not rebuild Docker containers when nothing changed.
 
 Arguments :
@@ -292,31 +292,86 @@ if (!mode) {
   }
 }
 
-// Load pnpm-workspace.yaml
-const wsYaml: string | undefined = await findUp("pnpm-workspace.yaml")
+// Load pnpm-workspace.yaml or Yarn workspaces
+const wsYaml: string | undefined = await findUp("pnpm-workspace.yaml", {
+  cwd: process.cwd(),
+  stopAt: process.cwd(),
+})
 
-if (!wsYaml || !(await exists(wsYaml))) {
-  console.error("❌ pnpm-workspace.yaml not found")
+let repoRoot: string | undefined
+let workspaceGlobs: string[] = []
 
-  process.exit(4)
+if (wsYaml && (await exists(wsYaml))) {
+  repoRoot = path.dirname(wsYaml)
+
+  const wsConfig: PnpmWorkspaceConfig = yaml.load(
+    await fs.readFile(wsYaml, "utf8"),
+  ) as PnpmWorkspaceConfig
+
+  workspaceGlobs = Array.isArray(wsConfig.packages) ? wsConfig.packages : []
+
+  if (workspaceGlobs.length === 0) {
+    console.error("❌ No \"packages:\" entries in pnpm-workspace.yaml")
+
+    process.exit(4)
+  }
+} else {
+  // Try Yarn workspaces from package.json
+  const yarnPkg = await findUp(async (dir) => {
+    const p = path.join(dir, "package.json")
+
+    if (await exists(p)) {
+      try {
+        const data = JSON.parse(await fs.readFile(p, "utf8"))
+
+        if (data.workspaces) {
+          return p
+        }
+      } catch {
+        // ignore JSON parse errors
+      }
+    }
+
+    return undefined
+  }, {
+    cwd: process.cwd(),
+    stopAt: process.cwd(),
+  })
+
+  if (!yarnPkg) {
+    console.error(
+      "❌ No workspace configuration found (pnpm-workspace.yaml or package.json \"workspaces\")",
+    )
+
+    process.exit(4)
+  }
+
+  repoRoot = path.dirname(yarnPkg)
+  const pkgJson = JSON.parse(await fs.readFile(yarnPkg, "utf8"))
+
+  if (Array.isArray(pkgJson.workspaces)) {
+    workspaceGlobs = pkgJson.workspaces
+  } else if (
+    pkgJson.workspaces
+    && Array.isArray(pkgJson.workspaces.packages)
+  ) {
+    workspaceGlobs = pkgJson.workspaces.packages
+  }
+
+  if (workspaceGlobs.length === 0) {
+    console.error(
+      "❌ No workspace globs found in package.json \"workspaces\" field",
+    )
+
+    process.exit(4)
+  }
 }
 
-const repoRoot: string = path.dirname(wsYaml)
-
-const wsConfig: PnpmWorkspaceConfig = yaml.load(await fs.readFile(wsYaml, "utf8")) as PnpmWorkspaceConfig
-const workspaceGlobs: string[] = Array.isArray(wsConfig.packages)
-  ? wsConfig.packages
-  : []
-
-if (workspaceGlobs.length === 0) {
-  console.error("❌ No \"packages:\" entries in pnpm-workspace.yaml")
-
-  process.exit(4)
-}
+const repoRootPath: string = repoRoot!
 
 // Compile root .gitignore
 let rootIgnore = ignore()
-const rootGit: string = path.join(repoRoot, ".gitignore")
+const rootGit: string = path.join(repoRootPath, ".gitignore")
 
 if (await exists(rootGit)) {
   const rootGitContents = await fs.readFile(rootGit, "utf8")
@@ -590,9 +645,9 @@ export async function hash(): Promise<void> {
   )
 
   const pkgInfos = await Promise.all(pkgJsonPaths.map(async (pkgJson) => {
-    const absJson = path.resolve(repoRoot, pkgJson)
+    const absJson = path.resolve(repoRootPath, pkgJson)
     const dir = path.dirname(absJson)
-    const relDir = path.relative(repoRoot, dir)
+    const relDir = path.relative(repoRootPath, dir)
 
     const pkgData = JSON.parse(await fs.readFile(absJson, "utf8"))
     const pkgName: string = pkgData.name
