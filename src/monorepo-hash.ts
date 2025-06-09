@@ -19,6 +19,7 @@ export interface PackageInfo {
   deps: string[]
   perFileHashes: Record<string, string>
   ownHash?: Buffer
+  manifest: Record<string, any>
 }
 
 // Parse CLI flags
@@ -619,7 +620,14 @@ export async function hash(): Promise<void> {
 
     return [
       pkgName,
-      { dir, relDir, deps: [], perFileHashes: perFileMap, ownHash: ownBuffer },
+      {
+        dir,
+        relDir,
+        deps: [],
+        perFileHashes: perFileMap,
+        ownHash: ownBuffer,
+        manifest: pkgData,
+      },
     ] as [string, PackageInfo]
   }))
 
@@ -633,9 +641,7 @@ export async function hash(): Promise<void> {
 
   // 3) resolve internal deps for all pkgs (even those not in targets, since they might be needed for recursive hashing)
   const depEntries = await Promise.all(Object.entries(pkgs).map(async ([ pkgName, info ]) => {
-    const pkgJsonPath = path.join(info.dir, "package.json")
-    const pkgText = await fs.readFile(pkgJsonPath, "utf8")
-    const manifest = JSON.parse(pkgText)
+    const manifest = info.manifest
     const allDeps = {
       ...manifest.dependencies,
       ...manifest.devDependencies,
