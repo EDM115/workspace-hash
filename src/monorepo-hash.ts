@@ -18,8 +18,8 @@ export interface PackageInfo {
   relDir: string
   deps: string[]
   perFileHashes: Record<string, string>
-  ownHash?: Buffer
   manifest: Record<string, any>
+  ownHash?: Buffer
 }
 
 // Parse CLI flags
@@ -625,8 +625,8 @@ export async function hash(): Promise<void> {
         relDir,
         deps: [],
         perFileHashes: perFileMap,
-        ownHash: ownBuffer,
         manifest: pkgData,
+        ownHash: ownBuffer,
       },
     ] as [string, PackageInfo]
   }))
