@@ -13,11 +13,23 @@ import { findUp } from "find-up"
 
 export type PnpmWorkspaceConfig = { packages?: string[] }
 
+export interface PackageManifest {
+  name: string
+  version?: string
+  dependencies?: Record<string, string>
+  devDependencies?: Record<string, string>
+  peerDependencies?: Record<string, string>
+  optionalDependencies?: Record<string, string>
+  scripts?: Record<string, string>
+  [key: string]: unknown
+}
+
 export interface PackageInfo {
   dir: string
   relDir: string
   deps: string[]
   perFileHashes: Record<string, string>
+  manifest: PackageManifest
   ownHash?: Buffer
 }
 
@@ -594,7 +606,7 @@ export async function hash(): Promise<void> {
     const dir = path.dirname(absJson)
     const relDir = path.relative(repoRoot, dir)
 
-    const pkgData = JSON.parse(await fs.readFile(absJson, "utf8"))
+    const pkgData = JSON.parse(await fs.readFile(absJson, "utf8")) as PackageManifest
     const pkgName: string = pkgData.name
 
     // Get file list after ignores
@@ -619,7 +631,14 @@ export async function hash(): Promise<void> {
 
     return [
       pkgName,
-      { dir, relDir, deps: [], perFileHashes: perFileMap, ownHash: ownBuffer },
+      {
+        dir,
+        relDir,
+        deps: [],
+        perFileHashes: perFileMap,
+        manifest: pkgData,
+        ownHash: ownBuffer,
+      },
     ] as [string, PackageInfo]
   }))
 
@@ -633,9 +652,7 @@ export async function hash(): Promise<void> {
 
   // 3) resolve internal deps for all pkgs (even those not in targets, since they might be needed for recursive hashing)
   const depEntries = await Promise.all(Object.entries(pkgs).map(async ([ pkgName, info ]) => {
-    const pkgJsonPath = path.join(info.dir, "package.json")
-    const pkgText = await fs.readFile(pkgJsonPath, "utf8")
-    const manifest = JSON.parse(pkgText)
+    const manifest = info.manifest
     const allDeps = {
       ...manifest.dependencies,
       ...manifest.devDependencies,
