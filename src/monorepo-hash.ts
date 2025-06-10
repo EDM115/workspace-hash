@@ -652,11 +652,11 @@ export async function hash(): Promise<void> {
 
   // 3) resolve internal deps for all pkgs (even those not in targets, since they might be needed for recursive hashing)
   const depEntries = await Promise.all(Object.entries(pkgs).map(async ([ pkgName, info ]) => {
-    const manifest = info.manifest
+    const { dependencies, devDependencies, peerDependencies } = info.manifest
     const allDeps = {
-      ...manifest.dependencies,
-      ...manifest.devDependencies,
-      ...manifest.peerDependencies,
+      ...dependencies,
+      ...devDependencies,
+      ...peerDependencies,
     }
 
     const deps = Object.keys(allDeps)
@@ -680,12 +680,8 @@ export async function hash(): Promise<void> {
   // 5) perform generate or compare
   if (mode === "generate") {
     await generateHashes(pkgs, finalCache)
-
-    return
   } else {
     await compareHashes(pkgs, finalCache)
-
-    return
   }
 }
 
