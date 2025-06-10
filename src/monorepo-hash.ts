@@ -663,9 +663,11 @@ export async function hash(): Promise<void> {
   // 5) perform generate or compare
   if (mode === "generate") {
     await generateHashes(pkgs, finalCache)
+
     return
   } else {
     await compareHashes(pkgs, finalCache)
+
     return
   }
 }
