@@ -13,12 +13,23 @@ import { findUp } from "find-up"
 
 export type PnpmWorkspaceConfig = { packages?: string[] }
 
+export interface PackageManifest {
+  name: string
+  version?: string
+  dependencies?: Record<string, string>
+  devDependencies?: Record<string, string>
+  peerDependencies?: Record<string, string>
+  optionalDependencies?: Record<string, string>
+  scripts?: Record<string, string>
+  [key: string]: unknown
+}
+
 export interface PackageInfo {
   dir: string
   relDir: string
   deps: string[]
   perFileHashes: Record<string, string>
-  manifest: Record<string, any>
+  manifest: PackageManifest
   ownHash?: Buffer
 }
 
@@ -595,7 +606,7 @@ export async function hash(): Promise<void> {
     const dir = path.dirname(absJson)
     const relDir = path.relative(repoRoot, dir)
 
-    const pkgData = JSON.parse(await fs.readFile(absJson, "utf8"))
+    const pkgData = JSON.parse(await fs.readFile(absJson, "utf8")) as PackageManifest
     const pkgName: string = pkgData.name
 
     // Get file list after ignores
