@@ -349,7 +349,7 @@ For the very first run, you might need to create a workflow which will only chec
 - If you use another Version Control System than `git`, we can't ignore your files correctly for the hashes generation
 - Your EOL (End of Line) should be consistent across your monorepo's files and the different environments it's being used in. Since Docker containers and GitHub Actions runners are based on Linux, it's recommended to use `LF` as EOL.  
   I recommend to set this up in your IDE and formatter config.  
-- Due to workspace transitive dependencies, the hashes need to be regenerated for all workspaces even when comparing only a few targets. Fortunately, this is pretty fast, see the benchmarks below.
+- When using `--target`, transitive workspace dependencies are resolved and only the affected workspaces are processed.
 
 ## :rocket: Benchmarks
 These benchmarks have been realised on a Windows 11 laptop with an AMD Ryzen 5 5500U CPU clocked at 2.10 GHz, 16 Gb of DDR3 RAM and an old SSD (needless to say, not a very performant machine).  

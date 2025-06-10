@@ -368,8 +368,13 @@ export async function generateDebug(info: PackageInfo): Promise<void> {
   }
 }
 
-export async function generateHashes(pkgs: Record<string, PackageInfo>, finalCache: Record<string, string>): Promise<void> {
+export async function generateHashes(
+  pkgs: Record<string, PackageInfo>,
+  finalCache: Record<string, string>,
+  include: Set<string>,
+): Promise<void> {
   const writes = Object.entries(pkgs)
+    .filter(([ name ]) => include.has(name))
     // If the user passed --target, only write those relDirs
     .filter(([ _, { relDir }]) => !targets || targets.includes(relDir))
     .map(async ([ name, { dir, relDir }]) => {
@@ -383,9 +388,16 @@ export async function generateHashes(pkgs: Record<string, PackageInfo>, finalCac
   await Promise.all(writes)
 }
 
-export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCache: Record<string, string>): Promise<void> {
+export async function compareHashes(
+  pkgs: Record<string, PackageInfo>,
+  finalCache: Record<string, string>,
+  include: Set<string>,
+): Promise<void> {
   // 1) figure out exactly which workspaces have changed without filtering by targets
-  const changeChecks = await Promise.all(Object.entries(pkgs).map(async ([ pkgName, info ]) => {
+  const changeChecks = await Promise.all(
+    Object.entries(pkgs)
+      .filter(([ name ]) => include.has(name))
+      .map(async ([ pkgName, info ]) => {
     const currentHex = finalCache[pkgName]
     const hashPath = path.join(info.dir, ".hash")
     const existsHash = await exists(hashPath)
@@ -397,7 +409,8 @@ export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCach
     const oldHex = (await fs.readFile(hashPath, "utf8")).trim()
 
     return { pkgName, missing: false, changed: oldHex !== currentHex }
-  }))
+      })
+  )
 
   /* const allMissing = changeChecks
     .filter((r) => r.missing)
@@ -459,7 +472,10 @@ export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCach
   const missingTargets: Array<{ name: string; newHash: string }> = []
 
   // We need a map pkgName to oldHash so we can report old when it changed
-  const oldMapEntries = await Promise.all(Object.entries(pkgs).map(async ([ pkgName, info ]) => {
+  const oldMapEntries = await Promise.all(
+    Object.entries(pkgs)
+      .filter(([ name ]) => include.has(name))
+      .map(async ([ pkgName, info ]) => {
     const hashPath = path.join(info.dir, ".hash")
 
     if (!(await exists(hashPath))) {
@@ -468,7 +484,8 @@ export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCach
     const oldHex = (await fs.readFile(hashPath, "utf8")).trim()
 
     return [ pkgName, oldHex ] as [string, string]
-  }))
+      })
+  )
   const oldHashMap: Record<string, string> = {}
 
   oldMapEntries.forEach((entry) => {
@@ -481,8 +498,8 @@ export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCach
 
   // 5) finally, iterate only over the workspaces the user asked for
   const toCheck = targets
-    ? Object.entries(pkgs).filter(([ , info ]) => targets.includes(info.relDir))
-    : Object.entries(pkgs)
+    ? Object.entries(pkgs).filter(([ name, info ]) => include.has(name) && targets.includes(info.relDir))
+    : Object.entries(pkgs).filter(([ name ]) => include.has(name))
 
   const checkResults = await Promise.all(toCheck.map(async ([ pkgName, info ]) => {
     const newHash = finalCache[pkgName]
@@ -588,20 +605,11 @@ export async function hash(): Promise<void> {
     { onlyFiles: true, dot: true },
   )
 
-  // 2) build PackageInfo objects
+  // 2) read all manifests and basic info first
   const pkgs: Record<string, PackageInfo> = {}
-  const total = pkgJsonPaths.length
-  const pad = total < 10 ? 1 : total < 100 ? 2 : total < 1000 ? 3 : 4
+  const relToName: Record<string, string> = {}
 
-  // 3) compute per-file hashes and ownHash buffers
-  let count = 0
-
-  log(
-    `\r🔄 Computing hashes (${zeroPad(count, pad)}/${total})`,
-    true,
-  )
-
-  const pkgInfos = await Promise.all(pkgJsonPaths.map(async (pkgJson) => {
+  await Promise.all(pkgJsonPaths.map(async (pkgJson) => {
     const absJson = path.resolve(repoRoot, pkgJson)
     const dir = path.dirname(absJson)
     const relDir = path.relative(repoRoot, dir)
@@ -609,49 +617,18 @@ export async function hash(): Promise<void> {
     const pkgData = JSON.parse(await fs.readFile(absJson, "utf8")) as PackageManifest
     const pkgName: string = pkgData.name
 
-    // Get file list after ignores
-    const fileList = await getWorkspaceFileList(dir, relDir, rootIgnore)
-
-    // Compute per-file hashes & ownHash
-    const perFileMap = await computePerFileHashes(dir, fileList)
-    const sortedKeys = Object.keys(perFileMap).sort()
-    const ownBuffer = computeOwnHashFromPerFile(perFileMap, sortedKeys)
-
-    count++
-    log(
-      `\r🔄 Computing hashes (${zeroPad(count, pad)}/${total}) • ${
-        pkgJson.split("/package.json")[0]
-      }`,
-      true,
-    )
-
-    if (debug) {
-      await writeDebugFile(dir, perFileMap)
+    relToName[relDir] = pkgName
+    pkgs[pkgName] = {
+      dir,
+      relDir,
+      deps: [],
+      perFileHashes: {},
+      manifest: pkgData,
     }
-
-    return [
-      pkgName,
-      {
-        dir,
-        relDir,
-        deps: [],
-        perFileHashes: perFileMap,
-        manifest: pkgData,
-        ownHash: ownBuffer,
-      },
-    ] as [string, PackageInfo]
   }))
 
-  // Store PackageInfo (without deps yet)
-  for (const [ pkgName, info ] of pkgInfos) {
-    pkgs[pkgName] = info
-  }
-
-  log(`\r✅ Computed all hashes (${total})`, true)
-  log("\n")
-
-  // 3) resolve internal deps for all pkgs (even those not in targets, since they might be needed for recursive hashing)
-  const depEntries = await Promise.all(Object.entries(pkgs).map(async ([ pkgName, info ]) => {
+  // 3) resolve internal deps for all pkgs
+  for (const [ pkgName, info ] of Object.entries(pkgs)) {
     const { dependencies, devDependencies, peerDependencies } = info.manifest
     const allDeps = {
       ...dependencies,
@@ -663,25 +640,82 @@ export async function hash(): Promise<void> {
       .filter((d) => pkgs[d])
       .sort()
 
-    return [ pkgName, deps ] as [string, string[]]
+    info.deps = deps
+  }
+
+  // 4) determine which packages should be hashed
+  let targetNames: string[]
+
+  if (targets) {
+    targetNames = targets
+      .map((t) => relToName[t])
+      .filter((n): n is string => Boolean(n))
+  } else {
+    targetNames = Object.keys(pkgs)
+  }
+
+  const include = new Set<string>()
+  const stack = [ ...targetNames ]
+
+  while (stack.length > 0) {
+    const name = stack.pop()!
+
+    if (!include.has(name) && pkgs[name]) {
+      include.add(name)
+      stack.push(...pkgs[name].deps)
+    }
+  }
+
+  const included = Array.from(include)
+  const total = included.length
+  const pad = total < 10 ? 1 : total < 100 ? 2 : total < 1000 ? 3 : 4
+
+  // 5) compute per-file hashes and ownHash buffers only for included packages
+  let count = 0
+
+  log(
+    `\r🔄 Computing hashes (${zeroPad(count, pad)}/${total})`,
+    true,
+  )
+
+  await Promise.all(included.map(async (name) => {
+    const info = pkgs[name]
+    const { dir, relDir } = info
+
+    const fileList = await getWorkspaceFileList(dir, relDir, rootIgnore)
+    const perFileMap = await computePerFileHashes(dir, fileList)
+    const sortedKeys = Object.keys(perFileMap).sort()
+    const ownBuffer = computeOwnHashFromPerFile(perFileMap, sortedKeys)
+
+    info.perFileHashes = perFileMap
+    info.ownHash = ownBuffer
+
+    count++
+    log(
+      `\r🔄 Computing hashes (${zeroPad(count, pad)}/${total}) • ${relDir}`,
+      true,
+    )
+
+    if (debug) {
+      await writeDebugFile(dir, perFileMap)
+    }
   }))
 
-  for (const [ pkgName, deps ] of depEntries) {
-    pkgs[pkgName].deps = deps
-  }
+  log(`\r✅ Computed all hashes (${total})`, true)
+  log("\n")
 
   // 4) recursively compute final hash (aggregate)
   const finalCache: Record<string, string> = {}
 
-  for (const pkgName of Object.keys(pkgs)) {
+  for (const pkgName of included) {
     computeFinalHash(pkgName, pkgs, finalCache)
   }
 
   // 5) perform generate or compare
   if (mode === "generate") {
-    await generateHashes(pkgs, finalCache)
+    await generateHashes(pkgs, finalCache, include)
   } else {
-    await compareHashes(pkgs, finalCache)
+    await compareHashes(pkgs, finalCache, include)
   }
 }
 
