@@ -123,7 +123,7 @@ export async function mapLimit<T, R>(
   limit: number,
   fn: (item: T)=> Promise<R>,
 ): Promise<R[]> {
-  const results: R[] = []
+  const results: R[] = Array.from({ length: items.length })
   let idx = 0
 
   async function worker() {
