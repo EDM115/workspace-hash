@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-import type { PathLike } from "node:fs"
 
 import crypto from "node:crypto"
+import { createReadStream, type PathLike } from "node:fs"
 import fs from "node:fs/promises"
+import os from "node:os"
 import path from "node:path"
 
 import fg from "fast-glob"
@@ -117,6 +118,30 @@ export function zeroPad(num: number, places: number): string {
   return String(num).padStart(places, "0")
 }
 
+export async function mapLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T)=> Promise<R>,
+): Promise<R[]> {
+  const results: R[] = Array.from({ length: items.length })
+  let idx = 0
+
+  async function worker() {
+    while (idx < items.length) {
+      const current = idx++
+
+      // oxlint-disable-next-line no-await-in-loop
+      results[current] = await fn(items[current])
+    }
+  }
+
+  const workers = Array.from({ length: limit }).map(() => worker())
+
+  await Promise.all(workers)
+
+  return results
+}
+
 /**
  * Given a workspace directory (`dir`) and its repo-relative path (`relDir`), return a sorted array of all file-relative paths (using OS-specific separators), after applying root and package‐level .gitignore filters.
  */
@@ -167,21 +192,30 @@ export async function computePerFileHashes(
   const result: Record<string, string> = {}
   const CONCURRENCY = 100
 
-  for (let i = 0; i < fileList.length; i += CONCURRENCY) {
-    const batch = fileList.slice(i, i + CONCURRENCY)
+  // Pre-normalize paths to avoid repeated split/join
+  const normalized = fileList.map((rel) => [ rel, rel.split(path.sep).join("/") ])
+
+  for (let i = 0; i < normalized.length; i += CONCURRENCY) {
+    const batch = normalized.slice(i, i + CONCURRENCY)
 
     // oxlint-disable-next-line no-await-in-loop : Needed to not blow up memory with too many concurrent reads
-    const partial = await Promise.all(batch.map(async (rel) => {
+    const partial = await Promise.all(batch.map(async ([ rel, norm ]) => {
       const fullPath = path.join(dir, rel)
-      const normalized = rel.split(path.sep).join("/")
-      const content = await fs.readFile(fullPath)
-      const fileHash = crypto
-        .createHash("sha256")
-        .update(normalized)
-        .update(content)
-        .digest("hex")
+      const h = crypto.createHash("sha256")
 
-      return [ normalized, fileHash ] as [string, string]
+      h.update(norm)
+
+      await new Promise<void>((resolve, reject) => {
+        const stream = createReadStream(fullPath)
+
+        stream.on("data", (chunk) => h.update(chunk))
+        stream.on("error", reject)
+        stream.on("end", () => resolve())
+      })
+
+      const fileHash = h.digest("hex")
+
+      return [ norm, fileHash ] as [string, string]
     }))
 
     for (const [ norm, partialHash ] of partial) {
@@ -409,8 +443,7 @@ export async function compareHashes(
     const oldHex = (await fs.readFile(hashPath, "utf8")).trim()
 
     return { pkgName, missing: false, changed: oldHex !== currentHex }
-      })
-  )
+  }))
 
   /* const allMissing = changeChecks
     .filter((r) => r.missing)
@@ -627,8 +660,8 @@ export async function hash(): Promise<void> {
     }
   }))
 
-  // 3) resolve internal deps for all pkgs
-  for (const [ pkgName, info ] of Object.entries(pkgs)) {
+  // 3) resolve internal deps for all pkgs (even those not in targets, since they might be needed for recursive hashing)
+  const depEntries = await Promise.all(Object.entries(pkgs).map(async ([ pkgName, info ]) => {
     const { dependencies, devDependencies, peerDependencies } = info.manifest
     const allDeps = {
       ...dependencies,
@@ -640,7 +673,11 @@ export async function hash(): Promise<void> {
       .filter((d) => pkgs[d])
       .sort()
 
-    info.deps = deps
+    return [ pkgName, deps ] as [string, string[]]
+  }))
+
+  for (const [ pkgName, deps ] of depEntries) {
+    pkgs[pkgName].deps = deps
   }
 
   // 4) determine which packages should be hashed
@@ -678,28 +715,33 @@ export async function hash(): Promise<void> {
     true,
   )
 
-  await Promise.all(included.map(async (name) => {
-    const info = pkgs[name]
-    const { dir, relDir } = info
+  const concurrency = Math.max(1, os.cpus().length)
+  await mapLimit(
+    included,
+    concurrency,
+    async (name): Promise<void> => {
+      const info = pkgs[name]
+      const { dir, relDir } = info
 
-    const fileList = await getWorkspaceFileList(dir, relDir, rootIgnore)
-    const perFileMap = await computePerFileHashes(dir, fileList)
-    const sortedKeys = Object.keys(perFileMap).sort()
-    const ownBuffer = computeOwnHashFromPerFile(perFileMap, sortedKeys)
+      const fileList = await getWorkspaceFileList(dir, relDir, rootIgnore)
+      const perFileMap = await computePerFileHashes(dir, fileList)
+      const sortedKeys = Object.keys(perFileMap).sort()
+      const ownBuffer = computeOwnHashFromPerFile(perFileMap, sortedKeys)
 
-    info.perFileHashes = perFileMap
-    info.ownHash = ownBuffer
+      info.perFileHashes = perFileMap
+      info.ownHash = ownBuffer
 
-    count++
-    log(
-      `\r🔄 Computing hashes (${zeroPad(count, pad)}/${total}) • ${relDir}`,
-      true,
-    )
+      count++
+      log(
+        `\r🔄 Computing hashes (${zeroPad(count, pad)}/${total}) • ${relDir}`,
+        true,
+      )
 
-    if (debug) {
-      await writeDebugFile(dir, perFileMap)
-    }
-  }))
+      if (debug) {
+        await writeDebugFile(dir, perFileMap)
+      }
+    },
+  )
 
   log(`\r✅ Computed all hashes (${total})`, true)
   log("\n")

@@ -5,7 +5,7 @@
 
 <img src="https://raw.githubusercontent.com/EDM115/monorepo-hash/refs/heads/master/images/attempt_6.png" alt="monorepo-hash logo" width="200" height="200">
 
-![NPM Version](https://img.shields.io/npm/v/monorepo-hash) ![NPM Downloads](https://img.shields.io/npm/dt/monorepo-hash) ![jsDelivr hits (npm)](https://img.shields.io/jsdelivr/npm/hm/monorepo-hash)  
+![NPM Version](https://img.shields.io/npm/v/monorepo-hash) ![NPM Downloads](https://img.shields.io/npm/dt/monorepo-hash)  
 ![Dependent repos (via libraries.io)](https://img.shields.io/librariesio/dependent-repos/npm/monorepo-hash) ![Dependents (via libraries.io)](https://img.shields.io/librariesio/dependents/npm/monorepo-hash)  
 ![Libraries.io dependency status for latest release](https://img.shields.io/librariesio/release/npm/monorepo-hash) ![Libraries.io SourceRank](https://img.shields.io/librariesio/sourcerank/npm/monorepo-hash)
 
@@ -348,7 +348,7 @@ For the very first run, you might need to create a workflow which will only chec
 - Bases the transitive dependency detection on the `workspace:` field in the `package.json` files
 - If you use another Version Control System than `git`, we can't ignore your files correctly for the hashes generation
 - Your EOL (End of Line) should be consistent across your monorepo's files and the different environments it's being used in. Since Docker containers and GitHub Actions runners are based on Linux, it's recommended to use `LF` as EOL.  
-  I recommend to set this up in your IDE and formatter config.  
+  I recommend to set this up in your IDE and formatter config.
 - When using `--target`, transitive workspace dependencies are resolved and only the affected workspaces are processed.
 
 ## :rocket: Benchmarks
