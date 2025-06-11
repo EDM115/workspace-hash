@@ -370,7 +370,7 @@ export async function generateDebug(info: PackageInfo): Promise<void> {
 
 export async function generateHashes(
   pkgs: Record<string, PackageInfo>,
-  finalCache: Record<string, string>,
+  finalHashes: Record<string, string>,
   include: Set<string>,
 ): Promise<void> {
   const writes = Object.entries(pkgs)
@@ -378,7 +378,7 @@ export async function generateHashes(
     // If the user passed --target, only write those relDirs
     .filter(([ _, { relDir }]) => !targets || targets.includes(relDir))
     .map(async ([ name, { dir, relDir }]) => {
-      const current = finalCache[name]
+      const current = finalHashes[name]
       const hashPath = path.join(dir, ".hash")
 
       await fs.writeFile(hashPath, current)
@@ -390,7 +390,7 @@ export async function generateHashes(
 
 export async function compareHashes(
   pkgs: Record<string, PackageInfo>,
-  finalCache: Record<string, string>,
+  finalHashes: Record<string, string>,
   include: Set<string>,
 ): Promise<void> {
   // 1) figure out exactly which workspaces have changed without filtering by targets
@@ -398,7 +398,7 @@ export async function compareHashes(
     Object.entries(pkgs)
       .filter(([ name ]) => include.has(name))
       .map(async ([ pkgName, info ]) => {
-    const currentHex = finalCache[pkgName]
+    const currentHex = finalHashes[pkgName]
     const hashPath = path.join(info.dir, ".hash")
     const existsHash = await exists(hashPath)
 
@@ -502,7 +502,7 @@ export async function compareHashes(
     : Object.entries(pkgs).filter(([ name ]) => include.has(name))
 
   const checkResults = await Promise.all(toCheck.map(async ([ pkgName, info ]) => {
-    const newHash = finalCache[pkgName]
+    const newHash = finalHashes[pkgName]
     const hashPath = path.join(info.dir, ".hash")
     const existsHash = await exists(hashPath)
 
@@ -705,17 +705,17 @@ export async function hash(): Promise<void> {
   log("\n")
 
   // 4) recursively compute final hash (aggregate)
-  const finalCache: Record<string, string> = {}
+  const finalHashes: Record<string, string> = {}
 
   for (const pkgName of included) {
-    computeFinalHash(pkgName, pkgs, finalCache)
+    computeFinalHash(pkgName, pkgs, finalHashes)
   }
 
   // 5) perform generate or compare
   if (mode === "generate") {
-    await generateHashes(pkgs, finalCache, include)
+    await generateHashes(pkgs, finalHashes, include)
   } else {
-    await compareHashes(pkgs, finalCache, include)
+    await compareHashes(pkgs, finalHashes, include)
   }
 }
 
