@@ -640,7 +640,7 @@ export async function hash(): Promise<void> {
   }))
 
   // Resolve internal deps for all packages
-  for (const [ pkgName, info ] of Object.entries(meta)) {
+  for (const [ , info ] of Object.entries(meta)) {
     const { dependencies, devDependencies, peerDependencies } = info.manifest
     const allDeps = {
       ...dependencies,
@@ -661,6 +661,7 @@ export async function hash(): Promise<void> {
       return
     }
     namesToProcess.add(pkgName)
+
     for (const dep of meta[pkgName].deps) {
       addWithDeps(dep)
     }
@@ -669,6 +670,7 @@ export async function hash(): Promise<void> {
   if (targets) {
     for (const t of targets) {
       const name = relToName[t]
+
       if (name) {
         addWithDeps(name)
       }
@@ -723,6 +725,7 @@ export async function hash(): Promise<void> {
   )
 
   const pkgs: Record<string, PackageInfo> = {}
+
   for (const [ pkgName, info ] of pkgInfos) {
     pkgs[pkgName] = info
   }

@@ -30,9 +30,11 @@ await writeFile(
 
 const pkgADir = path.join(tmp, "packages", "pkg-a")
 const pkgBDir = path.join(tmp, "packages", "pkg-b")
+const pkgCDir = path.join(tmp, "packages", "pkg-c")
 
 await mkdirp(pkgADir)
 await mkdirp(pkgBDir)
+await mkdirp(pkgCDir)
 
 await writeJson(
   path.join(pkgADir, "package.json"),
@@ -57,6 +59,16 @@ await writeJson(
 await writeFile(
   path.join(pkgBDir, "index.js"),
   "export const msg = \"pkg-b\"\n",
+)
+
+await writeJson(
+  path.join(pkgCDir, "package.json"),
+  { name: "pkg-c", version: "0.1.0", type: "module" },
+  { spaces: 2 },
+)
+await writeFile(
+  path.join(pkgCDir, "index.js"),
+  "export const msg = \"pkg-c\"\n",
 )
 
 const src = path.resolve(__dirname, "../dist/monorepo-hash.js")

@@ -348,11 +348,14 @@ For the very first run, you might need to create a workflow which will only chec
 - Bases the transitive dependency detection on the `workspace:` field in the `package.json` files
 - If you use another Version Control System than `git`, we can't ignore your files correctly for the hashes generation
 - Your EOL (End of Line) should be consistent across your monorepo's files and the different environments it's being used in. Since Docker containers and GitHub Actions runners are based on Linux, it's recommended to use `LF` as EOL.  
-  I recommend to set this up in your IDE and formatter config.  
+  I recommend to set this up in your IDE and formatter config.
 
 ## :rocket: Benchmarks
 These benchmarks have been realised on a Windows 11 laptop with an AMD Ryzen 5 5500U CPU clocked at 2.10 GHz, 16 Gb of DDR3 RAM and an old SSD (needless to say, not a very performant machine).  
-They have been reproduced multiple time with a warm cache (node already run once) and with all applications closed.
+They have been reproduced multiple time with a warm cache (node already run once) and with all applications closed.  
+> [!IMPORTANT]  
+> These benchmarks have been realised with the version `1.0.0`.  
+> Important performance improvements have been made since then, new benchmarks will be added soon.
 
 **Small monorepo, 5k LoC : <ins>150 ms</ins>** (5 workspaces of 100 files each, files composed of 1 line of text)  
 **Medium monorepo, 505k LoC : <ins>2.66 s</ins>** (5 workspaces of 100 folders each, with each folder containing 100 files, files composed of 10 lines of text)  

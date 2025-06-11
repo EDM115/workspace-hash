@@ -13,6 +13,8 @@ import {
   it,
 } from "vitest"
 
+const { sep } = path
+
 describe("monorepo-hash output", () => {
   let cliScript: string
   let cwd: string
@@ -28,9 +30,11 @@ describe("monorepo-hash output", () => {
     const result = await execa(cli, [ cliScript, "--compare" ], { cwd, reject: false, all: true })
 
     expect(result.exitCode).toBe(0)
-    expect(result.all).toContain("✅ Unchanged (2) :")
-    expect(result.all).toContain("• packages/pkg-a")
-    expect(result.all).toContain("• packages/pkg-b")
+
+    expect(result.all).toMatch(/✅ Unchanged \(3\) :/m)
+    expect(result.all).toMatch(new RegExp(`• packages${sep.replace(/\\/g, "\\\\")}pkg-a`, "m"))
+    expect(result.all).toMatch(new RegExp(`• packages${sep.replace(/\\/g, "\\\\")}pkg-b`, "m"))
+    expect(result.all).toMatch(new RegExp(`• packages${sep.replace(/\\/g, "\\\\")}pkg-c`, "m"))
   })
 
   it("detects a file change and exits with non-zero, listing the changed workspace", async () => {
@@ -45,10 +49,19 @@ describe("monorepo-hash output", () => {
     const result = await execa(cli, [ cliScript, "--compare" ], { cwd, reject: false, all: true })
 
     expect(result.exitCode).toBe(1)
-    expect(result.all).toContain("⚠️  Changed (2) :")
-    expect(result.all).toContain("• packages/pkg-b")
-    expect(result.all).toContain("• packages/pkg-a")
-    expect(result.all).toMatch(/changed dependency/)
+
+    const expectedPattern = new RegExp(
+      "✅ Unchanged \\(1\\) :\\s*"
+      + `• packages${sep.replace(/\\/g, "\\\\")}pkg-c\\s*`
+      + "⚠️  Changed \\(2\\) :\\s*"
+      + `• packages${sep.replace(/\\/g, "\\\\")}pkg-a[\\s\\S]*?`
+      + "🚧 changed dependency\\(s\\) :[\\s\\S]*?"
+      + `• packages${sep.replace(/\\/g, "\\\\")}pkg-b[\\s\\S]*?`
+      + `• packages${sep.replace(/\\/g, "\\\\")}pkg-b`,
+      "ms",
+    )
+
+    expect(result.all).toMatch(expectedPattern)
   })
 
   it("reports missing .hash if you delete a hash file and run --compare", async () => {
@@ -64,7 +77,7 @@ describe("monorepo-hash output", () => {
 
     expect(result.exitCode).toBe(1)
     expect(result.all).toContain("❓ Missing .hash files (1) :")
-    expect(result.all).toContain("• packages/pkg-a")
+    expect(result.all).toContain(`• packages${sep}pkg-a`)
   })
 
   it("produces deterministic hashes across consecutive --generate runs", async () => {
