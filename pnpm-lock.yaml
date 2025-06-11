@@ -49,8 +49,8 @@ importers:
         specifier: ~4.15.1
         version: 4.15.1(@typescript-eslint/utils@8.34.0(eslint@9.28.0(jiti@2.4.2))(typescript@5.8.3))(eslint@9.28.0(jiti@2.4.2))
       eslint-plugin-oxlint:
-        specifier: ~0.18.1
-        version: 0.18.1
+        specifier: ~1.0.0
+        version: 1.0.0
       execa:
         specifier: ~9.6.0
         version: 9.6.0
@@ -72,9 +72,6 @@ importers:
       tsdown:
         specifier: ~0.12.7
         version: 0.12.7(typescript@5.8.3)(unplugin-unused@0.5.1)
-      tsx:
-        specifier: ~4.19.4
-        version: 4.19.4
       typescript:
         specifier: ~5.8.3
         version: 5.8.3
@@ -1093,8 +1090,8 @@ packages:
       eslint-import-resolver-node:
         optional: true
 
-  eslint-plugin-oxlint@0.18.1:
-    resolution: {integrity: sha512-QmwUWiihxS4MimFTzJQqrC5H8os8s1ZIiWj290dvAkIlhCP/CIBJdauYZRE7kNAPeLGJoR7DZGRX1Bcn2JHYbQ==}
+  eslint-plugin-oxlint@1.0.0:
+    resolution: {integrity: sha512-j+eziIt4SkM4g+P4i7HgAzK/j0OkA33gN9DpF7/nmvaU5W5HPk8CWVntXySseRHdgqBz6IhAwJunXA+d5x618g==}
 
   eslint-scope@8.3.0:
     resolution: {integrity: sha512-pUNxi75F8MJ/GdeKtVLSbYg4ZI34J6C0C7sbL4YOp2exGwen7ZsuBqKzUhXd0qMQ362yET3z+uPwKeg/0C2XCQ==}
@@ -2696,7 +2693,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-oxlint@0.18.1:
+  eslint-plugin-oxlint@1.0.0:
     dependencies:
       jsonc-parser: 3.3.1
 
@@ -3273,6 +3270,7 @@ snapshots:
       get-tsconfig: 4.10.1
     optionalDependencies:
       fsevents: 2.3.3
+    optional: true
 
   type-check@0.4.0:
     dependencies:

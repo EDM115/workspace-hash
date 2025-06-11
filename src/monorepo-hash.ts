@@ -622,30 +622,78 @@ export async function hash(): Promise<void> {
     { onlyFiles: true, dot: true },
   )
 
-  // 2) build PackageInfo objects
-  const pkgs: Record<string, PackageInfo> = {}
-  const total = pkgJsonPaths.length
+  // 2) read package.json files to gather basic info (without hashing yet)
+  type Meta = { dir: string; relDir: string; manifest: PackageManifest; deps: string[] }
+  const meta: Record<string, Meta> = {}
+  const relToName: Record<string, string> = {}
+
+  await Promise.all(pkgJsonPaths.map(async (pkgJson) => {
+    const absJson = path.resolve(repoRoot, pkgJson)
+    const dir = path.dirname(absJson)
+    const relDir = path.relative(repoRoot, dir)
+
+    const pkgData = JSON.parse(await fs.readFile(absJson, "utf8")) as PackageManifest
+    const pkgName: string = pkgData.name
+
+    meta[pkgName] = { dir, relDir, manifest: pkgData, deps: [] }
+    relToName[relDir] = pkgName
+  }))
+
+  // Resolve internal deps for all packages
+  for (const [ , info ] of Object.entries(meta)) {
+    const { dependencies, devDependencies, peerDependencies } = info.manifest
+    const allDeps = {
+      ...dependencies,
+      ...devDependencies,
+      ...peerDependencies,
+    }
+
+    info.deps = Object.keys(allDeps)
+      .filter((d) => meta[d])
+      .sort()
+  }
+
+  // Determine which packages actually need hashing
+  const namesToProcess = new Set<string>()
+
+  function addWithDeps(pkgName: string): void {
+    if (namesToProcess.has(pkgName)) {
+      return
+    }
+    namesToProcess.add(pkgName)
+
+    for (const dep of meta[pkgName].deps) {
+      addWithDeps(dep)
+    }
+  }
+
+  if (targets) {
+    for (const t of targets) {
+      const name = relToName[t]
+
+      if (name) {
+        addWithDeps(name)
+      }
+    }
+  } else {
+    Object.keys(meta).forEach((n) => namesToProcess.add(n))
+  }
+
+  const toHash = Array.from(namesToProcess)
+  const total = toHash.length
   const pad = total < 10 ? 1 : total < 100 ? 2 : total < 1000 ? 3 : 4
 
-  // 3) compute per-file hashes and ownHash buffers
+  // 3) compute per-file hashes and ownHash buffers only for required packages
   let count = 0
 
-  log(
-    `\r🔄 Computing hashes (${zeroPad(count, pad)}/${total})`,
-    true,
-  )
+  log(`\r🔄 Computing hashes (${zeroPad(count, pad)}/${total})`, true)
 
   const concurrency = Math.max(1, os.cpus().length)
   const pkgInfos = await mapLimit<string, [string, PackageInfo]>(
-    pkgJsonPaths,
+    toHash,
     concurrency,
-    async (pkgJson): Promise<[string, PackageInfo]> => {
-      const absJson = path.resolve(repoRoot, pkgJson)
-      const dir = path.dirname(absJson)
-      const relDir = path.relative(repoRoot, dir)
-
-      const pkgData = JSON.parse(await fs.readFile(absJson, "utf8")) as PackageManifest
-      const pkgName: string = pkgData.name
+    async (pkgName): Promise<[string, PackageInfo]> => {
+      const { dir, relDir, manifest, deps } = meta[pkgName]
 
       // Get file list after ignores
       const fileList = await getWorkspaceFileList(dir, relDir, rootIgnore)
@@ -656,12 +704,7 @@ export async function hash(): Promise<void> {
       const ownBuffer = computeOwnHashFromPerFile(perFileMap, sortedKeys)
 
       count++
-      log(
-        `\r🔄 Computing hashes (${zeroPad(count, pad)}/${total}) • ${
-          pkgJson.split("/package.json")[0]
-        }`,
-        true,
-      )
+      log(`\r🔄 Computing hashes (${zeroPad(count, pad)}/${total}) • ${relDir}`, true)
 
       if (debug) {
         await writeDebugFile(dir, perFileMap)
@@ -672,16 +715,17 @@ export async function hash(): Promise<void> {
         {
           dir,
           relDir,
-          deps: [],
+          deps,
           perFileHashes: perFileMap,
-          manifest: pkgData,
+          manifest,
           ownHash: ownBuffer,
         },
-      ] as [string, PackageInfo]
+      ]
     },
   )
 
-  // Store PackageInfo (without deps yet)
+  const pkgs: Record<string, PackageInfo> = {}
+
   for (const [ pkgName, info ] of pkgInfos) {
     pkgs[pkgName] = info
   }
@@ -689,30 +733,10 @@ export async function hash(): Promise<void> {
   log(`\r✅ Computed all hashes (${total})`, true)
   log("\n")
 
-  // 3) resolve internal deps for all pkgs (even those not in targets, since they might be needed for recursive hashing)
-  const depEntries = await Promise.all(Object.entries(pkgs).map(async ([ pkgName, info ]) => {
-    const { dependencies, devDependencies, peerDependencies } = info.manifest
-    const allDeps = {
-      ...dependencies,
-      ...devDependencies,
-      ...peerDependencies,
-    }
-
-    const deps = Object.keys(allDeps)
-      .filter((d) => pkgs[d])
-      .sort()
-
-    return [ pkgName, deps ] as [string, string[]]
-  }))
-
-  for (const [ pkgName, deps ] of depEntries) {
-    pkgs[pkgName].deps = deps
-  }
-
-  // 4) recursively compute final hash (aggregate)
+  // 4) recursively compute final hash (aggregate) for needed packages
   const finalCache: Record<string, string> = {}
 
-  for (const pkgName of Object.keys(pkgs)) {
+  for (const pkgName of toHash) {
     computeFinalHash(pkgName, pkgs, finalCache)
   }
 
