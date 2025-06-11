@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-import type { PathLike } from "node:fs"
 
 import crypto from "node:crypto"
+import { createReadStream, type PathLike } from "node:fs"
 import fs from "node:fs/promises"
+import os from "node:os"
 import path from "node:path"
 
 import fg from "fast-glob"
@@ -117,6 +118,30 @@ export function zeroPad(num: number, places: number): string {
   return String(num).padStart(places, "0")
 }
 
+export async function mapLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T)=> Promise<R>,
+): Promise<R[]> {
+  const results: R[] = Array.from({ length: items.length })
+  let idx = 0
+
+  async function worker() {
+    while (idx < items.length) {
+      const current = idx++
+
+      // oxlint-disable-next-line no-await-in-loop
+      results[current] = await fn(items[current])
+    }
+  }
+
+  const workers = Array.from({ length: limit }).map(() => worker())
+
+  await Promise.all(workers)
+
+  return results
+}
+
 /**
  * Given a workspace directory (`dir`) and its repo-relative path (`relDir`), return a sorted array of all file-relative paths (using OS-specific separators), after applying root and package‐level .gitignore filters.
  */
@@ -167,21 +192,30 @@ export async function computePerFileHashes(
   const result: Record<string, string> = {}
   const CONCURRENCY = 100
 
-  for (let i = 0; i < fileList.length; i += CONCURRENCY) {
-    const batch = fileList.slice(i, i + CONCURRENCY)
+  // Pre-normalize paths to avoid repeated split/join
+  const normalized = fileList.map((rel) => [ rel, rel.split(path.sep).join("/") ])
+
+  for (let i = 0; i < normalized.length; i += CONCURRENCY) {
+    const batch = normalized.slice(i, i + CONCURRENCY)
 
     // oxlint-disable-next-line no-await-in-loop : Needed to not blow up memory with too many concurrent reads
-    const partial = await Promise.all(batch.map(async (rel) => {
+    const partial = await Promise.all(batch.map(async ([ rel, norm ]) => {
       const fullPath = path.join(dir, rel)
-      const normalized = rel.split(path.sep).join("/")
-      const content = await fs.readFile(fullPath)
-      const fileHash = crypto
-        .createHash("sha256")
-        .update(normalized)
-        .update(content)
-        .digest("hex")
+      const h = crypto.createHash("sha256")
 
-      return [ normalized, fileHash ] as [string, string]
+      h.update(norm)
+
+      await new Promise<void>((resolve, reject) => {
+        const stream = createReadStream(fullPath)
+
+        stream.on("data", (chunk) => h.update(chunk))
+        stream.on("error", reject)
+        stream.on("end", () => resolve())
+      })
+
+      const fileHash = h.digest("hex")
+
+      return [ norm, fileHash ] as [string, string]
     }))
 
     for (const [ norm, partialHash ] of partial) {
@@ -601,46 +635,51 @@ export async function hash(): Promise<void> {
     true,
   )
 
-  const pkgInfos = await Promise.all(pkgJsonPaths.map(async (pkgJson) => {
-    const absJson = path.resolve(repoRoot, pkgJson)
-    const dir = path.dirname(absJson)
-    const relDir = path.relative(repoRoot, dir)
+  const concurrency = Math.max(1, os.cpus().length)
+  const pkgInfos = await mapLimit<string, [string, PackageInfo]>(
+    pkgJsonPaths,
+    concurrency,
+    async (pkgJson): Promise<[string, PackageInfo]> => {
+      const absJson = path.resolve(repoRoot, pkgJson)
+      const dir = path.dirname(absJson)
+      const relDir = path.relative(repoRoot, dir)
 
-    const pkgData = JSON.parse(await fs.readFile(absJson, "utf8")) as PackageManifest
-    const pkgName: string = pkgData.name
+      const pkgData = JSON.parse(await fs.readFile(absJson, "utf8")) as PackageManifest
+      const pkgName: string = pkgData.name
 
-    // Get file list after ignores
-    const fileList = await getWorkspaceFileList(dir, relDir, rootIgnore)
+      // Get file list after ignores
+      const fileList = await getWorkspaceFileList(dir, relDir, rootIgnore)
 
-    // Compute per-file hashes & ownHash
-    const perFileMap = await computePerFileHashes(dir, fileList)
-    const sortedKeys = Object.keys(perFileMap).sort()
-    const ownBuffer = computeOwnHashFromPerFile(perFileMap, sortedKeys)
+      // Compute per-file hashes & ownHash
+      const perFileMap = await computePerFileHashes(dir, fileList)
+      const sortedKeys = Object.keys(perFileMap).sort()
+      const ownBuffer = computeOwnHashFromPerFile(perFileMap, sortedKeys)
 
-    count++
-    log(
-      `\r🔄 Computing hashes (${zeroPad(count, pad)}/${total}) • ${
-        pkgJson.split("/package.json")[0]
-      }`,
-      true,
-    )
+      count++
+      log(
+        `\r🔄 Computing hashes (${zeroPad(count, pad)}/${total}) • ${
+          pkgJson.split("/package.json")[0]
+        }`,
+        true,
+      )
 
-    if (debug) {
-      await writeDebugFile(dir, perFileMap)
-    }
+      if (debug) {
+        await writeDebugFile(dir, perFileMap)
+      }
 
-    return [
-      pkgName,
-      {
-        dir,
-        relDir,
-        deps: [],
-        perFileHashes: perFileMap,
-        manifest: pkgData,
-        ownHash: ownBuffer,
-      },
-    ] as [string, PackageInfo]
-  }))
+      return [
+        pkgName,
+        {
+          dir,
+          relDir,
+          deps: [],
+          perFileHashes: perFileMap,
+          manifest: pkgData,
+          ownHash: ownBuffer,
+        },
+      ] as [string, PackageInfo]
+    },
+  )
 
   // Store PackageInfo (without deps yet)
   for (const [ pkgName, info ] of pkgInfos) {
