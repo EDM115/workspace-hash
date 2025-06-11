@@ -1,10 +1,9 @@
 #!/usr/bin/env node
-import type { PathLike } from "node:fs"
-import { createReadStream } from "node:fs"
-import os from "node:os"
 
 import crypto from "node:crypto"
+import { createReadStream, type PathLike } from "node:fs"
 import fs from "node:fs/promises"
+import os from "node:os"
 import path from "node:path"
 
 import fg from "fast-glob"
@@ -131,7 +130,7 @@ export async function mapLimit<T, R>(
     while (idx < items.length) {
       const current = idx++
 
-      // oxlint-disable-next-line no-await-in-loop -- sequential execution within worker
+      // oxlint-disable-next-line no-await-in-loop
       results[current] = await fn(items[current])
     }
   }
@@ -648,10 +647,10 @@ export async function hash(): Promise<void> {
       const pkgData = JSON.parse(await fs.readFile(absJson, "utf8")) as PackageManifest
       const pkgName: string = pkgData.name
 
-    // Get file list after ignores
+      // Get file list after ignores
       const fileList = await getWorkspaceFileList(dir, relDir, rootIgnore)
 
-    // Compute per-file hashes & ownHash
+      // Compute per-file hashes & ownHash
       const perFileMap = await computePerFileHashes(dir, fileList)
       const sortedKeys = Object.keys(perFileMap).sort()
       const ownBuffer = computeOwnHashFromPerFile(perFileMap, sortedKeys)
