@@ -577,6 +577,11 @@ export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCach
     }
   }
 
+  // Sort each category alphabetically
+  unchangedTargets.sort((a, b) => a.localeCompare(b))
+  changedTargets.sort((a, b) => a.name.localeCompare(b.name))
+  missingTargets.sort((a, b) => a.name.localeCompare(b.name))
+
   // Display results grouped by category
   if (unchangedTargets.length > 0) {
     log(`✅ Unchanged (${unchangedTargets.length}) :`)

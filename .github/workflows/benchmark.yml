@@ -57,7 +57,7 @@ jobs:
       - name: "Prepare the benchmarks"
         run: |
           pnpm build
-          mkdir -p benchmarks
+          mkdir -p tests/benchmarks
           7z x tests/demo/small-monorepo.7z -o./tests/demo
           cp dist/monorepo-hash.js tests/demo/small-monorepo/monorepo-hash.js
           7z x tests/demo/medium-monorepo.7z -o./tests/demo
@@ -68,19 +68,19 @@ jobs:
       - name: "Benchmark : small monorepo"
         run: |
           cd tests/demo/small-monorepo
-          hyperfine --warmup 5 --runs 10 --export-markdown benchmarks/small-monorepo.md \
+          hyperfine --warmup 5 --runs 10 --export-markdown ../../benchmarks/small-monorepo.md \
             'node monorepo-hash.js --generate'
 
       - name: "Benchmark : medium monorepo"
         run: |
           cd tests/demo/medium-monorepo
-          hyperfine --warmup 5 --runs 10 --export-markdown benchmarks/medium-monorepo.md \
+          hyperfine --warmup 5 --runs 10 --export-markdown ../../benchmarks/medium-monorepo.md \
             'node monorepo-hash.js --generate'
 
       - name: "Benchmark : large monorepo"
         run: |
           cd tests/demo/large-monorepo
-          hyperfine --warmup 5 --runs 10 --export-markdown benchmarks/large-monorepo.md \
+          hyperfine --warmup 5 --runs 10 --export-markdown ../../benchmarks/large-monorepo.md \
             'node monorepo-hash.js --generate'
 
       - name: "Upload benchmarks results"
