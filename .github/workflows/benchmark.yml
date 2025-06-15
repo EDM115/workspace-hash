@@ -6,6 +6,8 @@ on:
       - master
     tags:
       - 'v*.*.*'
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       ref:
@@ -22,7 +24,13 @@ jobs:
     steps:
       - name: Get the Git reference
         id: get_ref
-        run: echo "ref=${{ github.event.inputs.ref || github.ref }}" >> $GITHUB_OUTPUT
+        run: |
+          if [[ "${{ github.event.inputs.ref }}" != "" ]]; then
+            echo "ref=${{ github.event.inputs.ref }}" >> $GITHUB_OUTPUT
+          else
+            ref="${{ github.ref }}"
+            echo "ref=${ref##*/}" >> $GITHUB_OUTPUT
+          fi
 
       - name: "Checkout code at ${{ steps.get_ref.outputs.ref }}"
         uses: actions/checkout@v4
