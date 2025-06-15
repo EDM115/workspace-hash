@@ -64,7 +64,7 @@ jobs:
           echo "Disk : $(df -h | grep '/$' | awk '{print $2}')"
           echo "OS : $(lsb_release -d | awk -F'\t' '{print $2}')"
           echo "Fastfetch :"
-          fastfetch -c all.json
+          fastfetch -c all.jsonc
           echo "lshw :"
           sudo lshw -short
 
