@@ -376,17 +376,17 @@ They have been reproduced 10 times thanks to [hyperfine](https://github.com/shar
 >
 > In order to not clunk up Git, these [demo repos](./tests/demo/) are compressed.  
 > Symbols :
-> :arrow_up: : Faster than the previous version
-> :arrow_down: : Slower than the previous version
-> :arrow_right: : No change in performance compared to the previous version
+> - :chart_with_upwards_trend: : Faster than the previous version
+> - :chart_with_downwards_trend: : Slower than the previous version
+> - :balance_scale: : No change in performance compared to the previous version
 
-| Version                | Small        | Medium      | Large        |
-| :--------------------- | :----------- | :---------- | :----------- |
-| `v1.3.1` :arrow_down:  | **152.1 ms** | **4.223 s** | **88.359 s** |
-| `v1.3.0` :arrow_up:    | 150.3 ms     | 4.142 s     | 87.462 s     |
-| `v1.2.0` :arrow_down:  | 152.9 ms     | 4.301 s     | 89.989 s     |
-| `v1.1.0` :arrow_right: | 116.3 ms     | 3.439 s     | 35.914 s     |
-| `v1.0.0` :arrow_up:    | 115.1 ms     | 3.422 s     | 35.928 s     |
+| Version                               | Small        | Medium      | Large        |
+| :------------------------------------ | :----------- | :---------- | :----------- |
+| `v1.3.1` :chart_with_downwards_trend: | **152.1 ms** | **4.223 s** | **88.359 s** |
+| `v1.3.0` :chart_with_upwards_trend:   | 150.3 ms     | 4.142 s     | 87.462 s     |
+| `v1.2.0` :chart_with_downwards_trend: | 152.9 ms     | 4.301 s     | 89.989 s     |
+| `v1.1.0` :balance_scale:              | 116.3 ms     | 3.439 s     | 35.914 s     |
+| `v1.0.0` :chart_with_upwards_trend:   | 115.1 ms     | 3.422 s     | 35.928 s     |
 
 ## :hammer_and_wrench: Contributing
 Here's a quick guide for contributing to `monorepo-hash` :
