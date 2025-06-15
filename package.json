@@ -1,7 +1,7 @@
 {
   "author": "EDM115 <npmjs@edm115.dev> (https://edm115.dev)",
   "bin": {
-    "monorepo-hash": "./dist/hash.js"
+    "monorepo-hash": "./dist/monorepo-hash.js"
   },
   "bugs": {
     "email": "npmjs@edm115.dev",
