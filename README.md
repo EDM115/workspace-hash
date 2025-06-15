@@ -258,7 +258,9 @@ $ pnpm monorepo-hash --compare --target="services/backend"
 
 ### Usage in CI
 This was the main reason I created this tool, and whether it's in GitHub Actions or locally through [act](https://github.com/nektos/act), it can help you to reduce drastically CI times.  
-Here's an example workflow that uses `monorepo-hash` to only build the workspaces that have changed :
+
+<details><summary><h4>Here's an example workflow that uses `monorepo-hash` to only build the workspaces that have changed :</h4></summary>
+
 ```yaml
 # The boring stuff
 
@@ -295,6 +297,7 @@ jobs:
         run: pnpm i --frozen-lockfile
 
       - name: Restore .hash cache
+        id: restore-hash-cache
         uses: actions/cache@v4
         with:
           path: |
@@ -302,6 +305,10 @@ jobs:
           key: hash-files-${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             hash-files-${{ runner.os }}-pnpm-
+
+      - name: Force rebuild if no cache has been found
+        if: steps.restore-hash-cache.outputs.cache-hit == ''
+        run: rm -fr **/.hash
 
       - name: Check if workspace-name is unchanged
         id: check-workspace-name
@@ -329,6 +336,10 @@ jobs:
 
       # Build things and test them
 
+      - name: Ensure hash files are up to date
+        run: |
+          pnpm monorepo-hash --generate
+
       - name: Save .hash cache
         uses: actions/cache@v4
         with:
@@ -338,6 +349,9 @@ jobs:
           restore-keys: |
             hash-files-${{ runner.os }}-pnpm-
 ```
+
+</details>
+
 Here we use the actions cache to store the `.hash` files, so that we can reuse them in the next runs.  
 This is especially useful because when you generate hashes, the action will pick them up from the latest commit and not the latest run.  
 For the very first run, you might need to create a workflow which will only checkout and save the .hash files in a cache for future runs.
@@ -351,17 +365,28 @@ For the very first run, you might need to create a workflow which will only chec
   I recommend to set this up in your IDE and formatter config.
 
 ## :rocket: Benchmarks
-These benchmarks have been realised on a Windows 11 laptop with an AMD Ryzen 5 5500U CPU clocked at 2.10 GHz, 16 Gb of DDR3 RAM and an old SSD (needless to say, not a very performant machine).  
-They have been reproduced multiple time with a warm cache (node already run once) and with all applications closed.  
-> [!IMPORTANT]  
-> These benchmarks have been realised with the version `1.0.0`.  
-> Important performance improvements have been made since then, new benchmarks will be added soon.
+These benchmarks have been realised on Standard GitHub-hosted runner that you can get by running any Action.  
+The specs as I'm wroting this are an AMD EPYC 7763 64-Core CPU, 15Gi of RAM and 72G of SSD storage.  
+They have been reproduced 10 times thanks to [hyperfine](https://github.com/sharkdp/hyperfine).  
+> [!NOTE]  
+> Here are the details of each demo monorepo used for the benchmarks :
+> - **Small monorepo** : 5 workspaces of 100 files each, files composed of 1 line of text
+> - **Medium monorepo** : 5 workspaces of 100 folders each, with each folder containing 100 files, files composed of 10 lines of text
+> - **Large monorepo** : 5 workspaces of 100 folders each, with each folder containing 10 files and 10 folders, and each of these folders containing 100 files, files composed of 100 lines of text  
+>
+> In order to not clunk up Git, these [demo repos](./tests/demo/) are compressed.  
+> Symbols :
+> :arrow_up: : Faster than the previous version
+> :arrow_down: : Slower than the previous version
+> :arrow_right: : No change in performance compared to the previous version
 
-**Small monorepo, 5k LoC : <ins>150 ms</ins>** (5 workspaces of 100 files each, files composed of 1 line of text)  
-**Medium monorepo, 505k LoC : <ins>2.66 s</ins>** (5 workspaces of 100 folders each, with each folder containing 100 files, files composed of 10 lines of text)  
-**Large monorepo, 505m LoC : <ins>47.7 s</ins>** (5 workspaces of 100 folders each, with each folder containing 10 files and 10 folders, and each of these folders containing 100 files, files composed of 100 lines of text)
-
-In order to not clunk up Git, these [demo repos](./tests/demo/) are compressed.
+| Version                | Small        | Medium      | Large        |
+| :--------------------- | :----------- | :---------- | :----------- |
+| `v1.3.1` :arrow_down:  | **152.1 ms** | **4.223 s** | **88.359 s** |
+| `v1.3.0` :arrow_up:    | 150.3 ms     | 4.142 s     | 87.462 s     |
+| `v1.2.0` :arrow_down:  | 152.9 ms     | 4.301 s     | 89.989 s     |
+| `v1.1.0` :arrow_right: | 116.3 ms     | 3.439 s     | 35.914 s     |
+| `v1.0.0` :arrow_up:    | 115.1 ms     | 3.422 s     | 35.928 s     |
 
 ## :hammer_and_wrench: Contributing
 Here's a quick guide for contributing to `monorepo-hash` :
