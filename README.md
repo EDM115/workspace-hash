@@ -366,8 +366,9 @@ For the very first run, you might need to create a workflow which will only chec
 
 ## :rocket: Benchmarks
 These benchmarks have been realised on Standard GitHub-hosted runner that you can get by running any Action.  
-The specs as I'm wroting this are an AMD EPYC 7763 64-Core CPU, 15Gi of RAM and 72G of SSD storage.  
-They have been reproduced 10 times thanks to [hyperfine](https://github.com/sharkdp/hyperfine).  
+The specs as I'm wroting this are an AMD EPYC 7763 64-Core (4) @ 3.24 GHz CPU, 15.62 GiB of RAM and 72G of SSD storage.  
+They have been reproduced 10 times with a cold disk cache thanks to [hyperfine](https://github.com/sharkdp/hyperfine).  
+Warm cache usage is usually 2/3 times faster than cold cache, so these results are more representative of a first run in CI or on a fresh boot.
 > [!NOTE]  
 > Here are the details of each demo monorepo used for the benchmarks :
 > - **Small monorepo** : 5 workspaces of 100 files each, files composed of 1 line of text
@@ -379,17 +380,15 @@ They have been reproduced 10 times thanks to [hyperfine](https://github.com/shar
 > - :chart_with_upwards_trend: : Faster than the previous version
 > - :chart_with_downwards_trend: : Slower than the previous version
 > - :balance_scale: : No perceivable change in performance compared to the previous version
->
-> The underlined values are the all-time best for each size of monorepo.
 
-| Version                               | Small               | Medium             | Large               |
-| :------------------------------------ | :------------------ | :----------------- | :------------------ |
-| `v1.4.0` :chart_with_upwards_trend:   | <ins>110.0 ms</ins> | <ins>3.400 s</ins> | <ins>35.544 s</ins> |
-| `v1.3.1` :chart_with_downwards_trend: | 152.1 ms            | 4.223 s            | 88.359 s            |
-| `v1.3.0` :chart_with_upwards_trend:   | 150.3 ms            | 4.142 s            | 87.462 s            |
-| `v1.2.0` :chart_with_downwards_trend: | 152.9 ms            | 4.301 s            | 89.989 s            |
-| `v1.1.0` :balance_scale:              | 116.3 ms            | 3.439 s            | 35.914 s            |
-| `v1.0.0` :chart_with_upwards_trend:   | 115.1 ms            | 3.422 s            | 35.928 s            |
+| Version                               | Small    | Medium  | Large    |
+| :------------------------------------ | :------- | :------ | :------- |
+| `v1.4.0` :chart_with_upwards_trend:   | 302.4 ms | 4.417 s | 58.606 s |
+| `v1.3.1` :chart_with_downwards_trend: | 372.2 ms | 5.470 s | 96.353 s |
+| `v1.3.0` :chart_with_upwards_trend:   | 303.5 ms | 4.415 s | 92.203 s |
+| `v1.2.0` :chart_with_downwards_trend: | 345.3 ms | 4.442 s | 93.391 s |
+| `v1.1.0` :chart_with_upwards_trend:   | 284.1 ms | 3.884 s | 56.717 s |
+| `v1.0.0` :balance_scale:              | 318.6 ms | 4.699 s | 58.094 s |
 
 ## :hammer_and_wrench: Contributing
 Here's a quick guide for contributing to `monorepo-hash` :
