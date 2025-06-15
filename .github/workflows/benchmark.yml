@@ -4,13 +4,17 @@ on:
   push:
     branches:
       - master
+    inputs:
+      ref:
+        description: 'Git reference (branch, tag, or SHA)'
+        required: false
+        default: 'master'
   workflow_dispatch:
-
-inputs:
-  ref:
-    description: "Git reference (branch, tag, or SHA)"
-    required: false
-    default: "master"
+    inputs:
+      ref:
+        description: 'Git reference (branch, tag, or SHA)'
+        required: false
+        default: 'master'
 
 jobs:
   benchmark:
