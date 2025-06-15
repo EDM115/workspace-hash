@@ -87,4 +87,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: benchmarks-results
-          path: benchmarks/*.md
+          path: tests/benchmarks/*.md
