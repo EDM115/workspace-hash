@@ -4,11 +4,8 @@ on:
   push:
     branches:
       - master
-    inputs:
-      ref:
-        description: 'Git reference (branch, tag, or SHA)'
-        required: false
-        default: 'master'
+    tags:
+      - 'v*.*.*'
   workflow_dispatch:
     inputs:
       ref:
@@ -23,10 +20,14 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - name: "Checkout code at ${{ inputs.ref }}"
+      - name: Get the Git reference
+        id: get_ref
+        run: echo "ref=${{ github.event.inputs.ref || github.ref }}" >> $GITHUB_OUTPUT
+
+      - name: "Checkout code at ${{ steps.get_ref.outputs.ref }}"
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ steps.get_ref.outputs.ref }}
 
       - name: "Bump Node.js to v24"
         uses: actions/setup-node@v4
@@ -86,5 +87,5 @@ jobs:
       - name: "Upload benchmarks results"
         uses: actions/upload-artifact@v4
         with:
-          name: benchmarks-results-${{ inputs.ref }}.zip
+          name: benchmarks-results-${{ steps.get_ref.outputs.ref }}.zip
           path: tests/benchmarks/*.md

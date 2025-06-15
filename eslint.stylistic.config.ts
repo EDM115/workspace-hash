@@ -1,13 +1,12 @@
 import stylistic from "@stylistic/eslint-plugin"
 import tsParser from "@typescript-eslint/parser"
-import eslintPluginImportX from "eslint-plugin-import-x"
 
 export default [
   {
     ignores: [ "**/dist/", "**/node_modules/", "tests/demo" ],
   },
   {
-    files: [ "**/*.{js,ts}" ],
+    files: [ "**/*.ts" ],
     linterOptions: {
       reportUnusedDisableDirectives: false,
     },
@@ -22,7 +21,6 @@ export default [
     },
     plugins: {
       "@stylistic": stylistic,
-      "import-x": eslintPluginImportX,
     },
     rules: {
       "@stylistic/array-bracket-newline": [ "warn", { multiline: true }],

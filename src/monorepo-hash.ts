@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 
+import type { PathLike } from "node:fs"
+
 import crypto from "node:crypto"
-import { createReadStream, type PathLike } from "node:fs"
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 
 import fg from "fast-glob"
 import ignore from "ignore"
-import yaml from "js-yaml"
 
 import { findUp } from "find-up"
+import { load } from "js-yaml"
+
 
 export type PnpmWorkspaceConfig = { packages?: string[] }
 
@@ -33,6 +35,7 @@ export interface PackageInfo {
   manifest: PackageManifest
   ownHash?: Buffer
 }
+
 
 // Parse CLI flags
 const argv = process.argv.slice(2)
@@ -201,19 +204,12 @@ export async function computePerFileHashes(
     // oxlint-disable-next-line no-await-in-loop : Needed to not blow up memory with too many concurrent reads
     const partial = await Promise.all(batch.map(async ([ rel, norm ]) => {
       const fullPath = path.join(dir, rel)
-      const h = crypto.createHash("sha256")
-
-      h.update(norm)
-
-      await new Promise<void>((resolve, reject) => {
-        const stream = createReadStream(fullPath)
-
-        stream.on("data", (chunk) => h.update(chunk))
-        stream.on("error", reject)
-        stream.on("end", () => resolve())
-      })
-
-      const fileHash = h.digest("hex")
+      const content = await fs.readFile(fullPath)
+      const fileHash = crypto
+        .createHash("sha256")
+        .update(norm)
+        .update(content)
+        .digest("hex")
 
       return [ norm, fileHash ] as [string, string]
     }))
@@ -349,7 +345,7 @@ if (!wsYaml || !(await exists(wsYaml))) {
 
 const repoRoot: string = path.dirname(wsYaml)
 
-const wsConfig: PnpmWorkspaceConfig = yaml.load(await fs.readFile(wsYaml, "utf8")) as PnpmWorkspaceConfig
+const wsConfig: PnpmWorkspaceConfig = load(await fs.readFile(wsYaml, "utf8")) as PnpmWorkspaceConfig
 const workspaceGlobs: string[] = Array.isArray(wsConfig.packages)
   ? wsConfig.packages
   : []
@@ -433,12 +429,12 @@ export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCach
     return { pkgName, missing: false, changed: oldHex !== currentHex }
   }))
 
-  /* const allMissing = changeChecks
+  /* const allMissing = new Set(changeChecks
     .filter((r) => r.missing)
-    .map((r) => r.pkgName) */
-  const allChanged = changeChecks
+    .map((r) => r.pkgName)) */
+  const allChanged = new Set(changeChecks
     .filter((r) => !r.missing && r.changed)
-    .map((r) => r.pkgName)
+    .map((r) => r.pkgName))
 
   // 2) build a quick adjacency map from packageName to its internal deps
   const adjacency: Record<string, string[]> = {}
@@ -465,7 +461,7 @@ export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCach
       if (!visited.has(dep)) {
         visited.add(dep)
         // push that dep's deps too
-        ;(adjacency[dep] || []).forEach((d) => {
+        ; (adjacency[dep] || []).forEach((d) => {
           if (!visited.has(d)) {
             stack.push(d)
           }
@@ -540,7 +536,7 @@ export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCach
       await generateDebug(info)
     }
     const transitiveDeps = getTransitiveDeps(pkgName)
-    const depsChanged = Array.from(transitiveDeps).filter((d) => allChanged.includes(d))
+    const depsChanged = Array.from(transitiveDeps).filter((d) => allChanged.has(d))
     const changedDepsRelDir = depsChanged.map((d) => pkgs[d].relDir)
 
     if (oldHash !== newHash || depsChanged.length > 0) {
