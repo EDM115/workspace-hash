@@ -1,0 +1,116 @@
+name: Benchmarks the CLI tool
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*.*.*'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git reference (branch, tag, or SHA)'
+        required: false
+        default: 'master'
+
+jobs:
+  benchmark:
+    name: "Benchmark CLI tool"
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 60
+
+    steps:
+      - name: Get the Git reference
+        id: get_ref
+        run: |
+          if [[ "${{ github.event.inputs.ref }}" != "" ]]; then
+            echo "ref=${{ github.event.inputs.ref }}" >> $GITHUB_OUTPUT
+          else
+            ref="${{ github.ref }}"
+            echo "ref=${ref##*/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: "Checkout code at ${{ steps.get_ref.outputs.ref }}"
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.get_ref.outputs.ref }}
+
+      - name: "Bump Node.js to v24"
+        uses: actions/setup-node@v4
+        with:
+          node-version: latest
+          check-latest: true
+
+      - name: "Install pnpm"
+        uses: pnpm/action-setup@v4
+
+      - name: "Install dependencies"
+        run: |
+          pnpm i --frozen-lockfile
+          wget https://github.com/sharkdp/hyperfine/releases/download/v1.19.0/hyperfine_1.19.0_amd64.deb
+          sudo dpkg -i hyperfine_1.19.0_amd64.deb
+          rm hyperfine_1.19.0_amd64.deb
+          sudo add-apt-repository ppa:zhangsongcui3371/fastfetch -y
+          sudo apt-get update
+          sudo apt-get install fastfetch lshw -y
+
+      - name: "Get the system specs"
+        run: |
+          echo "System Specs :"
+          echo "CPU : $(lscpu | grep 'Model name')"
+          echo "RAM : $(free -h | grep 'Mem' | awk '{print $2}')"
+          echo "Disk : $(df -h | grep '/$' | awk '{print $2}')"
+          echo "OS : $(lsb_release -d | awk -F'\t' '{print $2}')"
+          echo "Fastfetch :"
+          fastfetch -c all.jsonc
+          echo "lshw :"
+          sudo lshw -short
+
+      - name: "Prepare the benchmarks"
+        run: |
+          pnpm build
+          mkdir -p tests/benchmarks
+          7z x tests/demo/small-monorepo.7z -o./tests/demo
+          cp dist/monorepo-hash.js tests/demo/small-monorepo/monorepo-hash.js
+          7z x tests/demo/medium-monorepo.7z -o./tests/demo
+          cp dist/monorepo-hash.js tests/demo/medium-monorepo/monorepo-hash.js
+          7z x tests/demo/large-monorepo.7z -o./tests/demo
+          cp dist/monorepo-hash.js tests/demo/large-monorepo/monorepo-hash.js
+
+      - name: "Benchmark : small monorepo"
+        run: |
+          cd tests/demo/small-monorepo
+          hyperfine \
+            --prepare 'sync; echo 3 | sudo tee /proc/sys/vm/drop_caches' \
+            --warmup 2 \
+            --runs 10 \
+            --export-markdown ../../benchmarks/small-monorepo.md \
+            'node monorepo-hash.js --generate'
+
+      - name: "Benchmark : medium monorepo"
+        run: |
+          cd tests/demo/medium-monorepo
+          hyperfine \
+            --prepare 'sync; echo 3 | sudo tee /proc/sys/vm/drop_caches' \
+            --warmup 2 \
+            --runs 10 \
+            --export-markdown ../../benchmarks/medium-monorepo.md \
+            'node monorepo-hash.js --generate'
+
+      - name: "Benchmark : large monorepo"
+        run: |
+          cd tests/demo/large-monorepo
+          hyperfine \
+            --prepare 'sync; echo 3 | sudo tee /proc/sys/vm/drop_caches' \
+            --warmup 2 \
+            --runs 10 \
+            --export-markdown ../../benchmarks/large-monorepo.md \
+            'node monorepo-hash.js --generate'
+
+      - name: "Upload benchmarks results"
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmarks-results-${{ steps.get_ref.outputs.ref }}
+          path: tests/benchmarks/*.md

@@ -1,25 +1,41 @@
 #!/usr/bin/env node
+
 import type { PathLike } from "node:fs"
 
 import crypto from "node:crypto"
 import fs from "node:fs/promises"
+import os from "node:os"
 import path from "node:path"
 
 import fg from "fast-glob"
 import ignore from "ignore"
-import yaml from "js-yaml"
 
 import { findUp } from "find-up"
+import { load } from "js-yaml"
+
 
 export type PnpmWorkspaceConfig = { packages?: string[] }
+
+export interface PackageManifest {
+  name: string
+  version?: string
+  dependencies?: Record<string, string>
+  devDependencies?: Record<string, string>
+  peerDependencies?: Record<string, string>
+  optionalDependencies?: Record<string, string>
+  scripts?: Record<string, string>
+  [key: string]: unknown
+}
 
 export interface PackageInfo {
   dir: string
   relDir: string
   deps: string[]
   perFileHashes: Record<string, string>
+  manifest: PackageManifest
   ownHash?: Buffer
 }
+
 
 // Parse CLI flags
 const argv = process.argv.slice(2)
@@ -105,6 +121,30 @@ export function zeroPad(num: number, places: number): string {
   return String(num).padStart(places, "0")
 }
 
+export async function mapLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T)=> Promise<R>,
+): Promise<R[]> {
+  const results: R[] = Array.from({ length: items.length })
+  let idx = 0
+
+  async function worker() {
+    while (idx < items.length) {
+      const current = idx++
+
+      // oxlint-disable-next-line no-await-in-loop
+      results[current] = await fn(items[current])
+    }
+  }
+
+  const workers = Array.from({ length: limit }).map(() => worker())
+
+  await Promise.all(workers)
+
+  return results
+}
+
 /**
  * Given a workspace directory (`dir`) and its repo-relative path (`relDir`), return a sorted array of all file-relative paths (using OS-specific separators), after applying root and package‐level .gitignore filters.
  */
@@ -155,21 +195,23 @@ export async function computePerFileHashes(
   const result: Record<string, string> = {}
   const CONCURRENCY = 100
 
-  for (let i = 0; i < fileList.length; i += CONCURRENCY) {
-    const batch = fileList.slice(i, i + CONCURRENCY)
+  // Pre-normalize paths to avoid repeated split/join
+  const normalized = fileList.map((rel) => [ rel, rel.split(path.sep).join("/") ])
+
+  for (let i = 0; i < normalized.length; i += CONCURRENCY) {
+    const batch = normalized.slice(i, i + CONCURRENCY)
 
     // oxlint-disable-next-line no-await-in-loop : Needed to not blow up memory with too many concurrent reads
-    const partial = await Promise.all(batch.map(async (rel) => {
+    const partial = await Promise.all(batch.map(async ([ rel, norm ]) => {
       const fullPath = path.join(dir, rel)
-      const normalized = rel.split(path.sep).join("/")
       const content = await fs.readFile(fullPath)
       const fileHash = crypto
         .createHash("sha256")
-        .update(normalized)
+        .update(norm)
         .update(content)
         .digest("hex")
 
-      return [ normalized, fileHash ] as [string, string]
+      return [ norm, fileHash ] as [string, string]
     }))
 
     for (const [ norm, partialHash ] of partial) {
@@ -303,7 +345,7 @@ if (!wsYaml || !(await exists(wsYaml))) {
 
 const repoRoot: string = path.dirname(wsYaml)
 
-const wsConfig: PnpmWorkspaceConfig = yaml.load(await fs.readFile(wsYaml, "utf8")) as PnpmWorkspaceConfig
+const wsConfig: PnpmWorkspaceConfig = load(await fs.readFile(wsYaml, "utf8")) as PnpmWorkspaceConfig
 const workspaceGlobs: string[] = Array.isArray(wsConfig.packages)
   ? wsConfig.packages
   : []
@@ -365,10 +407,17 @@ export async function generateHashes(pkgs: Record<string, PackageInfo>, finalCac
       const hashPath = path.join(dir, ".hash")
 
       await fs.writeFile(hashPath, current)
-      log(`✅ ${relDir} (${current}) written to .hash`)
+
+      return { name, relDir, hash: current }
     })
 
-  await Promise.all(writes)
+  const results = await Promise.all(writes)
+
+  results
+    .sort((a, b) => a.relDir.localeCompare(b.relDir))
+    .forEach(({ relDir, hash }) => {
+      log(`✅ ${relDir} (${hash}) written to .hash`)
+    })
 }
 
 export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCache: Record<string, string>): Promise<void> {
@@ -387,12 +436,12 @@ export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCach
     return { pkgName, missing: false, changed: oldHex !== currentHex }
   }))
 
-  /* const allMissing = changeChecks
+  /* const allMissing = new Set(changeChecks
     .filter((r) => r.missing)
-    .map((r) => r.pkgName) */
-  const allChanged = changeChecks
+    .map((r) => r.pkgName)) */
+  const allChanged = new Set(changeChecks
     .filter((r) => !r.missing && r.changed)
-    .map((r) => r.pkgName)
+    .map((r) => r.pkgName))
 
   // 2) build a quick adjacency map from packageName to its internal deps
   const adjacency: Record<string, string[]> = {}
@@ -419,7 +468,7 @@ export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCach
       if (!visited.has(dep)) {
         visited.add(dep)
         // push that dep's deps too
-        ;(adjacency[dep] || []).forEach((d) => {
+        ; (adjacency[dep] || []).forEach((d) => {
           if (!visited.has(d)) {
             stack.push(d)
           }
@@ -494,7 +543,7 @@ export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCach
       await generateDebug(info)
     }
     const transitiveDeps = getTransitiveDeps(pkgName)
-    const depsChanged = Array.from(transitiveDeps).filter((d) => allChanged.includes(d))
+    const depsChanged = Array.from(transitiveDeps).filter((d) => allChanged.has(d))
     const changedDepsRelDir = depsChanged.map((d) => pkgs[d].relDir)
 
     if (oldHash !== newHash || depsChanged.length > 0) {
@@ -530,6 +579,14 @@ export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCach
       unchangedTargets.push(res.name)
     }
   }
+
+  // Sort each category alphabetically
+  unchangedTargets.sort((a, b) => a.localeCompare(b))
+  changedTargets.sort((a, b) => a.name.localeCompare(b.name))
+  changedTargets.forEach((r) => {
+    r.changedDeps.sort((a, b) => a.localeCompare(b))
+  })
+  missingTargets.sort((a, b) => a.name.localeCompare(b.name))
 
   // Display results grouped by category
   if (unchangedTargets.length > 0) {
@@ -576,54 +633,110 @@ export async function hash(): Promise<void> {
     { onlyFiles: true, dot: true },
   )
 
-  // 2) build PackageInfo objects
-  const pkgs: Record<string, PackageInfo> = {}
-  const total = pkgJsonPaths.length
-  const pad = total < 10 ? 1 : total < 100 ? 2 : total < 1000 ? 3 : 4
+  // 2) read package.json files to gather basic info (without hashing yet)
+  type Meta = { dir: string; relDir: string; manifest: PackageManifest; deps: string[] }
+  const meta: Record<string, Meta> = {}
+  const relToName: Record<string, string> = {}
 
-  // 3) compute per-file hashes and ownHash buffers
-  let count = 0
-
-  log(
-    `\r🔄 Computing hashes (${zeroPad(count, pad)}/${total})`,
-    true,
-  )
-
-  const pkgInfos = await Promise.all(pkgJsonPaths.map(async (pkgJson) => {
+  await Promise.all(pkgJsonPaths.map(async (pkgJson) => {
     const absJson = path.resolve(repoRoot, pkgJson)
     const dir = path.dirname(absJson)
     const relDir = path.relative(repoRoot, dir)
 
-    const pkgData = JSON.parse(await fs.readFile(absJson, "utf8"))
+    const pkgData = JSON.parse(await fs.readFile(absJson, "utf8")) as PackageManifest
     const pkgName: string = pkgData.name
 
-    // Get file list after ignores
-    const fileList = await getWorkspaceFileList(dir, relDir, rootIgnore)
-
-    // Compute per-file hashes & ownHash
-    const perFileMap = await computePerFileHashes(dir, fileList)
-    const sortedKeys = Object.keys(perFileMap).sort()
-    const ownBuffer = computeOwnHashFromPerFile(perFileMap, sortedKeys)
-
-    count++
-    log(
-      `\r🔄 Computing hashes (${zeroPad(count, pad)}/${total}) • ${
-        pkgJson.split("/package.json")[0]
-      }`,
-      true,
-    )
-
-    if (debug && mode === "generate") {
-      await writeDebugFile(dir, perFileMap)
-    }
-
-    return [
-      pkgName,
-      { dir, relDir, deps: [], perFileHashes: perFileMap, ownHash: ownBuffer },
-    ] as [string, PackageInfo]
+    meta[pkgName] = { dir, relDir, manifest: pkgData, deps: [] }
+    relToName[relDir] = pkgName
   }))
 
-  // Store PackageInfo (without deps yet)
+  // Resolve internal deps for all packages
+  for (const [ , info ] of Object.entries(meta)) {
+    const { dependencies, devDependencies, peerDependencies } = info.manifest
+    const allDeps = {
+      ...dependencies,
+      ...devDependencies,
+      ...peerDependencies,
+    }
+
+    info.deps = Object.keys(allDeps)
+      .filter((d) => meta[d])
+      .sort()
+  }
+
+  // Determine which packages actually need hashing
+  const namesToProcess = new Set<string>()
+
+  function addWithDeps(pkgName: string): void {
+    if (namesToProcess.has(pkgName)) {
+      return
+    }
+    namesToProcess.add(pkgName)
+
+    for (const dep of meta[pkgName].deps) {
+      addWithDeps(dep)
+    }
+  }
+
+  if (targets) {
+    for (const t of targets) {
+      const name = relToName[t]
+
+      if (name) {
+        addWithDeps(name)
+      }
+    }
+  } else {
+    Object.keys(meta).forEach((n) => namesToProcess.add(n))
+  }
+
+  const toHash = Array.from(namesToProcess)
+  const total = toHash.length
+  const pad = total < 10 ? 1 : total < 100 ? 2 : total < 1000 ? 3 : 4
+
+  // 3) compute per-file hashes and ownHash buffers only for required packages
+  let count = 0
+
+  log(`\r🔄 Computing hashes (${zeroPad(count, pad)}/${total})`, true)
+
+  const concurrency = Math.max(1, os.cpus().length)
+  const pkgInfos = await mapLimit<string, [string, PackageInfo]>(
+    toHash,
+    concurrency,
+    async (pkgName): Promise<[string, PackageInfo]> => {
+      const { dir, relDir, manifest, deps } = meta[pkgName]
+
+      // Get file list after ignores
+      const fileList = await getWorkspaceFileList(dir, relDir, rootIgnore)
+
+      // Compute per-file hashes & ownHash
+      const perFileMap = await computePerFileHashes(dir, fileList)
+      const sortedKeys = Object.keys(perFileMap).sort()
+      const ownBuffer = computeOwnHashFromPerFile(perFileMap, sortedKeys)
+
+      count++
+      log(`\r🔄 Computing hashes (${zeroPad(count, pad)}/${total}) • ${relDir}`, true)
+
+      if (debug && mode === "generate") {
+        await writeDebugFile(dir, perFileMap)
+      }
+
+      return [
+        pkgName,
+        {
+          dir,
+          relDir,
+          deps,
+          perFileHashes: perFileMap,
+          manifest,
+          ownHash: ownBuffer,
+        },
+      ]
+    },
+  )
+
+  const pkgs: Record<string, PackageInfo> = {}
+
   for (const [ pkgName, info ] of pkgInfos) {
     pkgs[pkgName] = info
   }
@@ -631,40 +744,18 @@ export async function hash(): Promise<void> {
   log(`\r✅ Computed all hashes (${total})`, true)
   log("\n")
 
-  // 3) resolve internal deps for all pkgs (even those not in targets, since they might be needed for recursive hashing)
-  const depEntries = await Promise.all(Object.entries(pkgs).map(async ([ pkgName, info ]) => {
-    const pkgJsonPath = path.join(info.dir, "package.json")
-    const pkgText = await fs.readFile(pkgJsonPath, "utf8")
-    const manifest = JSON.parse(pkgText)
-    const allDeps = {
-      ...manifest.dependencies,
-      ...manifest.devDependencies,
-      ...manifest.peerDependencies,
-    }
-
-    const deps = Object.keys(allDeps)
-      .filter((d) => pkgs[d])
-      .sort()
-
-    return [ pkgName, deps ] as [string, string[]]
-  }))
-
-  for (const [ pkgName, deps ] of depEntries) {
-    pkgs[pkgName].deps = deps
-  }
-
-  // 4) recursively compute final hash (aggregate)
+  // 4) recursively compute final hash (aggregate) for needed packages
   const finalCache: Record<string, string> = {}
 
-  for (const pkgName of Object.keys(pkgs)) {
+  for (const pkgName of toHash) {
     computeFinalHash(pkgName, pkgs, finalCache)
   }
 
   // 5) perform generate or compare
   if (mode === "generate") {
-    generateHashes(pkgs, finalCache)
+    await generateHashes(pkgs, finalCache)
   } else {
-    compareHashes(pkgs, finalCache)
+    await compareHashes(pkgs, finalCache)
   }
 }
 

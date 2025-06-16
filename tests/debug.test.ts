@@ -29,6 +29,7 @@ describe("debug mode", () => {
 
     // Modify a file in pkg-b
     const pkgBIndex = path.join(cwd, "packages", "pkg-b", "index.js")
+
     await writeFile(pkgBIndex, "export const msg = \"pkg-b (edited)\"\n")
 
     // Run compare with debug to detect the change
