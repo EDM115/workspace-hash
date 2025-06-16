@@ -367,9 +367,9 @@ For the very first run, you might need to create a workflow which will only chec
 
 ## :rocket: Benchmarks
 These benchmarks have been realised on Standard GitHub-hosted runner that you can get by running any Action.  
-The specs as I'm wroting this are an AMD EPYC 7763 64-Core (4) @ 3.24 GHz CPU, 15.62 GiB of RAM and 72G of SSD storage.  
+The specs as I'm wroting this are an AMD EPYC 7763 64-Core (4) @ 3.24 GHz CPU, 15.62 GiB of RAM and 71.61 GiB of SSD storage.  
 They have been reproduced 10 times with a cold disk cache thanks to [hyperfine](https://github.com/sharkdp/hyperfine).  
-Warm cache usage is usually 2/3 times faster than cold cache, so these results are more representative of a first run in CI or on a fresh boot.
+Warm cache usage is usually 2/3 times faster than cold cache, so these results are more representative of a first run in CI or on a fresh boot. The script run speed doesn't really change, the only performance overhead on a cold cache is the time it takes to run Node.js (and reading files from the disk).
 > [!NOTE]  
 > Here are the details of each demo monorepo used for the benchmarks :
 > - **Small monorepo** : 5 workspaces of 100 files each, files composed of 1 line of text
@@ -384,6 +384,8 @@ Warm cache usage is usually 2/3 times faster than cold cache, so these results a
 
 | Version                               | Small    | Medium  | Large    |
 | :------------------------------------ | :------- | :------ | :------- |
+| `v1.4.2` :chart_with_upwards_trend:   | 277.5 ms | 3.639 s | 54.694 s |
+| `v1.4.1` :chart_with_downwards_trend: | 371.8 ms | 5.240 s | 62.899 s |
 | `v1.4.0` :chart_with_upwards_trend:   | 302.4 ms | 4.417 s | 58.606 s |
 | `v1.3.1` :chart_with_downwards_trend: | 372.2 ms | 5.470 s | 96.353 s |
 | `v1.3.0` :chart_with_upwards_trend:   | 303.5 ms | 4.415 s | 92.203 s |
