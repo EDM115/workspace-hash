@@ -388,7 +388,7 @@ export async function generateDebug(info: PackageInfo): Promise<void> {
     }
 
     if (diverged.length > 0) {
-      log(`⚠️ <debug> ${info.relDir} diverging files :`)
+      log(`⚠️  <debug> ${info.relDir} diverging files :`)
       diverged.forEach((f) => log(`  • ${f}`))
       log("")
     }
@@ -717,7 +717,7 @@ export async function hash(): Promise<void> {
       count++
       log(`\r🔄 Computing hashes (${zeroPad(count, pad)}/${total}) • ${relDir}`, true)
 
-      if (debug) {
+      if (debug && mode === "generate") {
         await writeDebugFile(dir, perFileMap)
       }
 
