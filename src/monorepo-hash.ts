@@ -388,7 +388,7 @@ export async function generateDebug(info: PackageInfo): Promise<void> {
     }
 
     if (diverged.length > 0) {
-      log(`⚠️ <debug> ${info.relDir} diverging files :`)
+      log(`⚠️  <debug> ${info.relDir} diverging files :`)
       diverged.forEach((f) => log(`  • ${f}`))
       log("")
     }
