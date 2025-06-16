@@ -43,7 +43,7 @@ describe("debug mode", () => {
       { cwd, reject: false, all: true },
     )
 
-    expect(result.all).toMatch(new RegExp(`⚠️\\s+<debug>\\s+packages${sep}pkg-b\\s+diverging files\\s*:`))
+    expect(result.all).toMatch(new RegExp(`⚠️\\s+<debug>\\s+packages\\${sep}pkg-b\\s+diverging files\\s*:`))
     expect(result.all).toContain("• index.js")
     expect(result.exitCode).toBe(1)
   })
