@@ -70,9 +70,10 @@ describe("monorepo-hash output", () => {
     }
 
     await execa(cli, [ cliScript, "--generate" ], { cwd })
-    const hashAPath = path.join(globalThis.tmpRoot, "packages", "pkg-a", ".hash")
-
-    await remove(hashAPath)
+    const rootHashPath = path.join(globalThis.tmpRoot, ".hash")
+    const hashes = JSON.parse(await readFile(rootHashPath, "utf8")) as Record<string, string>
+    delete hashes["packages/pkg-a"]
+    await writeFile(rootHashPath, JSON.stringify(hashes, null, 2))
     const result = await execa(cli, [ cliScript, "--compare" ], { cwd, reject: false, all: true })
 
     expect(result.exitCode).toBe(1)
@@ -86,16 +87,16 @@ describe("monorepo-hash output", () => {
     }
 
     await execa(cli, [ cliScript, "--generate" ], { cwd })
-    const aPath = path.join(globalThis.tmpRoot, "packages", "pkg-a", ".hash")
-    const bPath = path.join(globalThis.tmpRoot, "packages", "pkg-b", ".hash")
-    const firstA = (await readFile(aPath, "utf8")).trim()
-    const firstB = (await readFile(bPath, "utf8")).trim()
+    const rootHashPath = path.join(globalThis.tmpRoot, ".hash")
+    const firstMap = JSON.parse(await readFile(rootHashPath, "utf8")) as Record<string, string>
+    const firstA = firstMap["packages/pkg-a"]
+    const firstB = firstMap["packages/pkg-b"]
 
-    await remove(aPath)
-    await remove(bPath)
+    await remove(rootHashPath)
     await execa(cli, [ cliScript, "--generate" ], { cwd })
-    const secondA = (await readFile(aPath, "utf8")).trim()
-    const secondB = (await readFile(bPath, "utf8")).trim()
+    const secondMap = JSON.parse(await readFile(rootHashPath, "utf8")) as Record<string, string>
+    const secondA = secondMap["packages/pkg-a"]
+    const secondB = secondMap["packages/pkg-b"]
 
     expect(secondA).toBe(firstA)
     expect(secondB).toBe(firstB)

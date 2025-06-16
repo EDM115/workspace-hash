@@ -27,11 +27,8 @@ describe("debug mode", () => {
   it("creates .debug-hash files and reports mismatched files", async () => {
     await execa(cli, [ cliScript, "--generate", "--debug" ], { cwd })
 
-    const aDebug = path.join(cwd, "packages", "pkg-a", ".debug-hash")
-    const bDebug = path.join(cwd, "packages", "pkg-b", ".debug-hash")
-
-    expect(await pathExists(aDebug)).toBe(true)
-    expect(await pathExists(bDebug)).toBe(true)
+    const rootDebug = path.join(cwd, ".debug-hash")
+    expect(await pathExists(rootDebug)).toBe(true)
 
     const pkgBIndex = path.join(cwd, "packages", "pkg-b", "index.js")
 
