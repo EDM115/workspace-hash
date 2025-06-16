@@ -407,10 +407,17 @@ export async function generateHashes(pkgs: Record<string, PackageInfo>, finalCac
       const hashPath = path.join(dir, ".hash")
 
       await fs.writeFile(hashPath, current)
-      log(`✅ ${relDir} (${current}) written to .hash`)
+
+      return { name, relDir, hash: current }
     })
 
-  await Promise.all(writes)
+  const results = await Promise.all(writes)
+
+  results
+    .sort((a, b) => a.relDir.localeCompare(b.relDir))
+    .forEach(({ relDir, hash }) => {
+      log(`✅ ${relDir} (${hash}) written to .hash`)
+    })
 }
 
 export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCache: Record<string, string>): Promise<void> {
@@ -576,6 +583,9 @@ export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCach
   // Sort each category alphabetically
   unchangedTargets.sort((a, b) => a.localeCompare(b))
   changedTargets.sort((a, b) => a.name.localeCompare(b.name))
+  changedTargets.forEach((r) => {
+    r.changedDeps.sort((a, b) => a.localeCompare(b))
+  })
   missingTargets.sort((a, b) => a.name.localeCompare(b.name))
 
   // Display results grouped by category
