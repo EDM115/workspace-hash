@@ -70,8 +70,8 @@ for (const arg of argv) {
     debug = true
   } else if (arg === "--help" || arg === "-h") {
     console.log(`
-A simple script to generate or compare .hash files for pnpm workspaces.
-The goal is to help not rebuild Docker containers when nothing changed.
+A simple script to generate or compare .hash files for monorepo workspaces.
+Supports PNPM, Yarn, NPM, Bun and Deno. The goal is to help not rebuild Docker containers when nothing changed.
 
 Arguments :
   --generate (-g)          Generate or update .hash files for all workspaces.
@@ -305,6 +305,66 @@ export async function loadDebugFile(dir: string): Promise<Record<string, string>
   return JSON.parse(text) as Record<string, string>
 }
 
+export interface WorkspaceInfo {
+  repoRoot: string
+  globs: string[]
+}
+
+export async function detectWorkspaces(): Promise<WorkspaceInfo> {
+  const wsYaml = await findUp("pnpm-workspace.yaml")
+
+  if (wsYaml && await exists(wsYaml)) {
+    const wsConfig = load(await fs.readFile(wsYaml, "utf8")) as PnpmWorkspaceConfig
+    const globs = Array.isArray(wsConfig.packages) ? wsConfig.packages : []
+
+    if (globs.length === 0) {
+      console.error('❌ No "packages:" entries in pnpm-workspace.yaml')
+      process.exit(4)
+    }
+
+    return { repoRoot: path.dirname(wsYaml), globs }
+  }
+
+  const pkgJson = await findUp("package.json")
+
+  if (pkgJson && await exists(pkgJson)) {
+    const rootDir = path.dirname(pkgJson)
+    const manifest = JSON.parse(await fs.readFile(pkgJson, "utf8")) as PackageManifest & { workspaces?: unknown }
+    const ws = manifest.workspaces as unknown
+    const globs = Array.isArray(ws)
+      ? ws.slice()
+      : ws && Array.isArray((ws as any).packages)
+        ? (ws as any).packages
+        : []
+
+    if (globs.length > 0) {
+      return { repoRoot: rootDir, globs }
+    }
+  }
+
+  const denoJson = await findUp("deno.json")
+
+  if (denoJson && await exists(denoJson)) {
+    const cfg = JSON.parse(await fs.readFile(denoJson, "utf8")) as any
+    const ws = cfg.workspace
+    const globs = Array.isArray(ws)
+      ? ws.slice()
+      : ws && Array.isArray(ws.members)
+        ? ws.members
+        : []
+
+    if (globs.length === 0) {
+      console.error('❌ No "workspace" entries in deno.json')
+      process.exit(4)
+    }
+
+    return { repoRoot: path.dirname(denoJson), globs }
+  }
+
+  console.error("❌ Workspace configuration not found")
+  process.exit(4)
+}
+
 // Normalize targets from forward-slash to platform-specific separators
 if (targets) {
   targets = targets.map((t) => t.replace(/\/+$/, "").split("/").join(path.sep))
@@ -334,40 +394,6 @@ if (!mode) {
   }
 }
 
-// Load pnpm-workspace.yaml
-const wsYaml: string | undefined = await findUp("pnpm-workspace.yaml")
-
-if (!wsYaml || !(await exists(wsYaml))) {
-  console.error("❌ pnpm-workspace.yaml not found")
-
-  process.exit(4)
-}
-
-const repoRoot: string = path.dirname(wsYaml)
-
-const wsConfig: PnpmWorkspaceConfig = load(await fs.readFile(wsYaml, "utf8")) as PnpmWorkspaceConfig
-const workspaceGlobs: string[] = Array.isArray(wsConfig.packages)
-  ? wsConfig.packages
-  : []
-
-if (workspaceGlobs.length === 0) {
-  console.error("❌ No \"packages:\" entries in pnpm-workspace.yaml")
-
-  process.exit(4)
-}
-
-// Compile root .gitignore
-let rootIgnore = ignore()
-const rootGit: string = path.join(repoRoot, ".gitignore")
-
-if (await exists(rootGit)) {
-  const rootGitContents = await fs.readFile(rootGit, "utf8")
-
-  rootIgnore = ignore().add(rootGitContents)
-  // Ignore hashes
-  rootIgnore.add("**/.hash")
-  rootIgnore.add("**/.debug-hash")
-}
 
 export async function generateDebug(info: PackageInfo): Promise<void> {
   const oldDebug = await loadDebugFile(info.dir)
@@ -627,6 +653,20 @@ export async function compareHashes(pkgs: Record<string, PackageInfo>, finalCach
 }
 
 export async function hash(): Promise<void> {
+  const { repoRoot, globs: workspaceGlobs } = await detectWorkspaces()
+
+  // Compile root .gitignore
+  let rootIgnore = ignore()
+  const rootGit = path.join(repoRoot, ".gitignore")
+
+  if (await exists(rootGit)) {
+    const rootGitContents = await fs.readFile(rootGit, "utf8")
+
+    rootIgnore = ignore().add(rootGitContents)
+    rootIgnore.add("**/.hash")
+    rootIgnore.add("**/.debug-hash")
+  }
+
   // 1) find every workspace's package.json
   const pkgJsonPaths = await fg(
     workspaceGlobs.map((glob) => path.posix.join(glob, "package.json")),

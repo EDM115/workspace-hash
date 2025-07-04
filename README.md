@@ -358,8 +358,7 @@ This is especially useful because when you generate hashes, the action will pick
 For the very first run, you might need to create a workflow which will only checkout and save the .hash files in a cache for future runs.
 
 ## :construction: Limitations
-- Only works with `PNPM` for now  
-  If you really need support for `Yarn` or `NPM`, feel free to open an issue or even submit a pull request !
+- Supports `PNPM`, `Yarn`, `NPM`, `Bun` and `Deno`
 - Bases the transitive dependency detection on the `workspace:` field in the `package.json` files
 - If you use another Version Control System than `git`, we can't ignore your files correctly for the hashes generation
 - Your EOL (End of Line) should be consistent across your monorepo's files and the different environments it's being used in. Since Docker containers and GitHub Actions runners are based on Linux, it's recommended to use `LF` as EOL.  
