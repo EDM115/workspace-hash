@@ -42,7 +42,8 @@ pnpm add -D monorepo-hash
 ```
 > [!TIP]
 > When using **PNPM**, ensure the `packages` field in your `pnpm-workspace.yaml` file is set up correctly, as `monorepo-hash` will use it to find your workspaces. Globs are supported.
-> When using **Yarn**, make sure the `workspaces` field in your root `package.json` lists your workspaces.
+> When using **Yarn**, **npm** or **Bun**, make sure the `workspaces` field in your root `package.json` lists your workspaces.
+> When using **Deno**, add a `workspaces` array in your root `deno.json` (or `deno.jsonc`) file.
 > `monorepo-hash` will also use the `workspace:` field in your `package.json` files to detect transitive dependencies.
 > Finally, it will generate `.hash` files that you would need to keep in your VCS in order for it to be efficient (ex : to be reused in your CI).
 
@@ -99,7 +100,7 @@ Don't forget to delete these files afterwards !
 - `1` : Changes detected in the hashes
 - `2` : Error with the arguments (either `--generate` or `--compare` is missing, or both were provided)
 - `3` : Unknown arguments provided
-- `4` : No workspaces found, either because `pnpm-workspace.yaml` is missing or the root `package.json` has no valid `workspaces` field
+- `4` : No workspaces found, either because `pnpm-workspace.yaml` is missing and neither `package.json` nor `deno.json` contain valid `workspaces`
 - `5` : An unexpected error occurred, please open an issue with the logs
 
 ## :test_tube: Examples
@@ -344,8 +345,7 @@ This is especially useful because when you generate hashes, the action will pick
 For the very first run, you might need to create a workflow which will only checkout and save the .hash files in a cache for future runs.
 
 ## :construction: Limitations
-- Works with `PNPM` and `Yarn` workspaces
-  If you really need support for `NPM`, feel free to open an issue or even submit a pull request !
+- Works with `PNPM`, `Yarn`, `npm`, `Bun` and `Deno` workspaces
 - Bases the transitive dependency detection on the `workspace:` field in the `package.json` files
 - If you use another Version Control System than `git`, we can't ignore your files correctly for the hashes generation
 - Your EOL (End of Line) should be consistent across your monorepo's files and the different environments it's being used in. Since Docker containers and GitHub Actions runners are based on Linux, it's recommended to use `LF` as EOL.  

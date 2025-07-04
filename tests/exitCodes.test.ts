@@ -87,6 +87,29 @@ describe("exit codes", () => {
     await remove(path.join(globalThis.tmpRoot, "package.json"))
   })
 
+  it("uses deno.json workspaces when others are missing", async () => {
+    if (!globalThis.tmpRoot) {
+      throw new Error("tmpRoot is not set")
+    }
+
+    const workspaceFilePath = path.join(globalThis.tmpRoot, "pnpm-workspace.yaml")
+    const workspaceContent = await readFile(workspaceFilePath, "utf8")
+
+    await remove(workspaceFilePath)
+    await writeJson(
+      path.join(globalThis.tmpRoot, "deno.json"),
+      { workspaces: ["packages/*"] },
+      { spaces: 2 },
+    )
+
+    const result = await execa(cli, [ cliScript, "--generate" ], { cwd, reject: false })
+
+    expect(result.exitCode).toBe(0)
+
+    await writeFile(workspaceFilePath, workspaceContent)
+    await remove(path.join(globalThis.tmpRoot, "deno.json"))
+  })
+
   it("returns 5 on unexpected error", async () => {
     if (!globalThis.tmpRoot) {
       throw new Error("tmpRoot is not set")

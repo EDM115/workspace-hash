@@ -54,7 +54,7 @@ for (const arg of argv) {
     debug = true
   } else if (arg === "--help" || arg === "-h") {
     console.log(`
-A simple script to generate or compare .hash files for pnpm or Yarn workspaces.
+A simple script to generate or compare .hash files for pnpm, Yarn, npm, Bun or Deno workspaces.
 The goal is to help not rebuild Docker containers when nothing changed.
 
 Arguments :
@@ -292,7 +292,7 @@ if (!mode) {
   }
 }
 
-// Load pnpm-workspace.yaml or Yarn workspaces
+// Load pnpm, npm, Yarn, Bun or Deno workspaces configuration
 const wsYaml: string | undefined = await findUp("pnpm-workspace.yaml", {
   cwd: process.cwd(),
   stopAt: process.cwd(),
@@ -316,8 +316,8 @@ if (wsYaml && (await exists(wsYaml))) {
     process.exit(4)
   }
 } else {
-  // Try Yarn workspaces from package.json
-  const yarnPkg = await findUp(async (dir) => {
+  // Try package.json workspaces (Yarn, npm, Bun)
+  const pkgPath = await findUp(async (dir) => {
     const p = path.join(dir, "package.json")
 
     if (await exists(p)) {
@@ -338,32 +338,65 @@ if (wsYaml && (await exists(wsYaml))) {
     stopAt: process.cwd(),
   })
 
-  if (!yarnPkg) {
-    console.error(
-      "❌ No workspace configuration found (pnpm-workspace.yaml or package.json \"workspaces\")",
-    )
+  if (pkgPath) {
+    repoRoot = path.dirname(pkgPath)
+    const pkgJson = JSON.parse(await fs.readFile(pkgPath, "utf8"))
 
-    process.exit(4)
-  }
+    if (Array.isArray(pkgJson.workspaces)) {
+      workspaceGlobs = pkgJson.workspaces
+    } else if (
+      pkgJson.workspaces
+      && Array.isArray(pkgJson.workspaces.packages)
+    ) {
+      workspaceGlobs = pkgJson.workspaces.packages
+    }
 
-  repoRoot = path.dirname(yarnPkg)
-  const pkgJson = JSON.parse(await fs.readFile(yarnPkg, "utf8"))
+    if (workspaceGlobs.length === 0) {
+      console.error(
+        "❌ No workspace globs found in package.json \"workspaces\" field",
+      )
 
-  if (Array.isArray(pkgJson.workspaces)) {
-    workspaceGlobs = pkgJson.workspaces
-  } else if (
-    pkgJson.workspaces
-    && Array.isArray(pkgJson.workspaces.packages)
-  ) {
-    workspaceGlobs = pkgJson.workspaces.packages
-  }
+      process.exit(4)
+    }
+  } else {
+    // Finally try deno.json or deno.jsonc
+    const denoPath = await findUp(async (dir) => {
+      const json = path.join(dir, "deno.json")
+      const jsonc = path.join(dir, "deno.jsonc")
 
-  if (workspaceGlobs.length === 0) {
-    console.error(
-      "❌ No workspace globs found in package.json \"workspaces\" field",
-    )
+      if (await exists(json)) return json
+      if (await exists(jsonc)) return jsonc
 
-    process.exit(4)
+      return undefined
+    }, {
+      cwd: process.cwd(),
+      stopAt: process.cwd(),
+    })
+
+    if (!denoPath) {
+      console.error(
+        "❌ No workspace configuration found (pnpm-workspace.yaml, package.json \"workspaces\" or deno.json)",
+      )
+
+      process.exit(4)
+    }
+
+    repoRoot = path.dirname(denoPath)
+    const raw = await fs.readFile(denoPath, "utf8")
+    const cleaned = raw.replace(/\/\/.*|\/\*[\s\S]*?\*\//g, "")
+    const denoJson = JSON.parse(cleaned)
+
+    if (Array.isArray(denoJson.workspaces)) {
+      workspaceGlobs = denoJson.workspaces
+    }
+
+    if (workspaceGlobs.length === 0) {
+      console.error(
+        "❌ No workspace globs found in deno.json \"workspaces\" field",
+      )
+
+      process.exit(4)
+    }
   }
 }
 
